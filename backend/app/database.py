@@ -20,11 +20,14 @@ elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
 
 
 def add_connect_timeout(url: str, timeout: int = 30) -> str:
-    """Add connect_timeout to URL if not present (asyncpg expects this in URL)."""
+    """Add timeout to URL (asyncpg uses 'timeout', not 'connect_timeout')."""
     parsed = urlparse(url)
     qs = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    if "connect_timeout" not in qs:
-        qs["connect_timeout"] = str(timeout)
+    # Remove old connect_timeout if present (user might have added it in Render env)
+    qs.pop("connect_timeout", None)
+    qs.pop("timeout", None)
+    # Add new timeout
+    qs["timeout"] = str(timeout)
     new_query = urlencode(qs)
     return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
 
