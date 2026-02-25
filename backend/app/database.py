@@ -1,7 +1,6 @@
 """Database connection and session management."""
 
 from collections.abc import AsyncGenerator
-from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -18,29 +17,11 @@ if db_url.startswith("postgres://"):
 elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-
-def add_connect_timeout(url: str, timeout: int = 30) -> str:
-    """Add timeout to URL (asyncpg uses 'timeout', not 'connect_timeout')."""
-    parsed = urlparse(url)
-    qs = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    # Remove old connect_timeout if present (user might have added it in Render env)
-    qs.pop("connect_timeout", None)
-    qs.pop("timeout", None)
-    # Add new timeout
-    qs["timeout"] = str(timeout)
-    new_query = urlencode(qs)
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query, parsed.fragment))
-
-
-# Add connect_timeout to URL
-db_url = add_connect_timeout(db_url, timeout=30)
-
-# Create async engine with proper timeout and pool settings
+# Create async engine
 engine = create_async_engine(
     db_url,
     echo=settings.debug,
     future=True,
-    pool_pre_ping=True,
 )
 
 # Create async session factory
