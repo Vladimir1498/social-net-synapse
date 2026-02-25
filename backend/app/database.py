@@ -10,9 +10,14 @@ from app.config import get_settings
 
 settings = get_settings()
 
+# Convert postgresql:// to postgresql+asyncpg:// for asyncpg driver
+db_url = settings.database_url
+if db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Create async engine
 engine = create_async_engine(
-    settings.database_url,
+    db_url,
     echo=settings.debug,
     future=True,
 )
