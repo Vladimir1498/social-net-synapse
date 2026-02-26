@@ -59,7 +59,7 @@ export default function RadarPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token && !userLoading) {
-      router.push("/login");
+      router.push("/social-net-synapse/login");
     }
   }, [userLoading, router]);
 
