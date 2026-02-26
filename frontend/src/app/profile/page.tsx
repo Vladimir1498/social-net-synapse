@@ -19,7 +19,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token && !isLoading) {
-      router.push("/social-net-synapse/login");
+      router.push("/login");
     }
   }, [isLoading, router]);
 
@@ -38,7 +38,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    window.location.href = "/social-net-synapse/login";
+    window.location.href = "/login";
   };
 
   if (isLoading) {

@@ -21,7 +21,7 @@ export default function FocusPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token && !userLoading) {
-      router.push("/social-net-synapse/login");
+      router.push("/login");
     }
   }, [userLoading, router]);
 

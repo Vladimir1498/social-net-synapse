@@ -37,7 +37,7 @@ export default function LoginPage() {
           password,
         });
       }
-      router.push("/social-net-synapse/");
+      router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     }
