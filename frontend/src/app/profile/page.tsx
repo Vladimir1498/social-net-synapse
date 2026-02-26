@@ -38,7 +38,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    window.location.href = "/social-net-synapse/login";
+    router.push("/login");
   };
 
   if (isLoading) {
