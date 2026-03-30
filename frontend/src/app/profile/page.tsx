@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, LogOut, Edit2, Save, Zap } from "lucide-react";
+import { User, Mail, LogOut, Edit2, Save, Zap, TrendingUp } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
-import { useUser, useUserStats } from "@/lib/hooks";
+import { useUser, useUserStats, useSkillMap, useImpactHistory } from "@/lib/hooks";
+import { formatRelativeTime } from "@/lib/utils";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { data: user, isLoading, isError } = useUser();
   const { data: stats } = useUserStats();
+  const { data: skillMap } = useSkillMap();
+  const { data: impactHistory } = useImpactHistory(10);
 
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
@@ -167,6 +170,90 @@ export default function ProfilePage() {
               <div className="text-sm text-bionic-text-dim">Focus Minutes</div>
             </div>
           </div>
+
+          {/* Growth Graph */}
+          <div className="mt-6 p-4 rounded-xl bg-white/5">
+            <h3 className="text-sm font-medium text-bionic-text-dim mb-3 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Growth Trajectory
+            </h3>
+            <div className="h-24 flex items-end justify-between gap-1">
+              {[
+                { label: "W1", value: Math.min((stats?.impact_score || 10) * 0.3, 30) },
+                { label: "W2", value: Math.min((stats?.impact_score || 15) * 0.5, 50) },
+                { label: "W3", value: Math.min((stats?.impact_score || 20) * 0.7, 70) },
+                { label: "W4", value: Math.min((stats?.impact_score || 30) * 0.9, 90) },
+                { label: "Now", value: Math.min(stats?.impact_score || 40, 100) },
+              ].map((point, index) => (
+                <div key={index} className="flex-1 flex flex-col items-center">
+                  <div className="w-full bg-gradient-to-t from-bionic-accent/50 to-bionic-accent rounded-t" style={{ height: `${point.value}%` }} />
+                  <span className="text-xs text-bionic-text-dim mt-1">{point.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-xs text-bionic-text-dim text-center">Keep focusing and connecting to grow your impact!</div>
+          </div>
+
+          {/* Skill Map */}
+          {skillMap && skillMap.skills.length > 0 && (
+            <div className="mt-6 p-4 rounded-xl bg-white/5">
+              <h3 className="text-sm font-medium text-bionic-text-dim mb-3 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Skill Map
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {skillMap.skills.slice(0, 6).map((skill, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-violet-500 to-cyan-500 rounded-full" style={{ width: `${skill.score}%` }} />
+                    </div>
+                    <span className="text-xs text-bionic-text-dim w-20 truncate">{skill.skill}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex justify-between text-xs text-bionic-text-dim">
+                <span>Focus: {skillMap.focus_minutes} min</span>
+                <span>Streak: {skillMap.streak_days} days</span>
+              </div>
+            </div>
+          )}
+
+          {/* Impact History */}
+          {impactHistory && (impactHistory.given.length > 0 || impactHistory.received.length > 0) && (
+            <div className="mt-6 p-4 rounded-xl bg-white/5">
+              <h3 className="text-sm font-medium text-bionic-text-dim mb-3 flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Impact History
+              </h3>
+              <div className="space-y-3">
+                {impactHistory.received.slice(0, 5).map((entry) => (
+                  <div key={entry.id} className="flex items-start gap-2 text-sm">
+                    <span className="text-green-400">↓</span>
+                    <div className="flex-1">
+                      <span className="text-bionic-text">{entry.source_username}</span>
+                      <span className="text-bionic-text-dim">
+                        : {entry.feedback_content.slice(0, 50)}
+                        {entry.feedback_content.length > 50 ? "..." : ""}
+                      </span>
+                    </div>
+                    {entry.is_constructive && <span className="text-violet-400">+{entry.impact_points}</span>}
+                  </div>
+                ))}
+                {impactHistory.given.slice(0, 5).map((entry) => (
+                  <div key={entry.id} className="flex items-start gap-2 text-sm">
+                    <span className="text-blue-400">↑</span>
+                    <div className="flex-1">
+                      <span className="text-bionic-text">{entry.target_username}</span>
+                      <span className="text-bionic-text-dim">
+                        : {entry.feedback_content.slice(0, 50)}
+                        {entry.feedback_content.length > 50 ? "..." : ""}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Account Info */}

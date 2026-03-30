@@ -6,6 +6,8 @@ export interface User {
   bio?: string;
   current_goal?: string;
   impact_score: number;
+  is_focusing: boolean;
+  current_focus_goal?: string;
   created_at: string;
 }
 
@@ -15,6 +17,8 @@ export interface UserPublic {
   bio?: string;
   current_goal?: string;
   impact_score: number;
+  is_focusing: boolean;
+  current_focus_goal?: string;
   similarity_score?: number;
 }
 
@@ -79,7 +83,11 @@ export interface Post {
   id: string;
   author_id: string;
   author_username?: string;
+  author_impact_score?: number;
+  author_is_focusing?: boolean;
+  author_focus_goal?: string;
   content: string;
+  image_url?: string;
   impact_count: number;
   created_at: string;
   similarity_score?: number;
@@ -88,6 +96,7 @@ export interface Post {
 
 export interface PostCreate {
   content: string;
+  image_url?: string;
 }
 
 export interface FeedResponse {
@@ -119,6 +128,25 @@ export interface ConnectResponse {
   connection_id: string;
 }
 
+export interface Connection {
+  user_id: string;
+  username: string;
+  bio?: string;
+  current_goal?: string;
+  impact_score: number;
+  is_focusing: boolean;
+  current_focus_goal?: string;
+  connected_at?: string;
+}
+
+export interface PendingConnection {
+  user_id: string;
+  username: string;
+  bio?: string;
+  current_goal?: string;
+  sent_at: string;
+}
+
 // Focus session types
 export interface FocusSessionStart {
   goal: string;
@@ -140,6 +168,17 @@ export interface UserStats {
   posts_count: number;
   focus_sessions_count: number;
   total_focus_minutes: number;
+}
+
+// Notification types
+export interface Notification {
+  id: string;
+  type: 'impact_received' | 'connection_accepted' | 'weekly_summary';
+  from_user_id?: string;
+  from_username?: string;
+  message: string;
+  created_at: string;
+  read: boolean;
 }
 
 // WebSocket types

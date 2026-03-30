@@ -26,6 +26,7 @@ async def get_matches(
     rings: int = 2,
     limit: int = 20,
     min_similarity: float = 0.0,
+    matching_goals_only: bool = False,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -40,6 +41,7 @@ async def get_matches(
         rings: Number of H3 rings to search (default 2).
         limit: Maximum number of results.
         min_similarity: Minimum similarity percentage threshold.
+        matching_goals_only: Only return users with high semantic similarity (>50%).
         current_user: Authenticated user.
         session: Database session.
 
@@ -75,6 +77,10 @@ async def get_matches(
         limit=limit,
     )
 
+    # Filter by matching_goals_only if enabled
+    if matching_goals_only:
+        matches = [m for m in matches if m["similarity_percentage"] > 50]
+
     # Format response
     match_results = []
     for match in matches:
@@ -87,6 +93,8 @@ async def get_matches(
                     bio=user.bio,
                     current_goal=user.current_goal,
                     impact_score=user.impact_score,
+                    is_focusing=user.is_focusing,
+                    current_focus_goal=user.current_focus_goal,
                 ),
                 similarity_percentage=match["similarity_percentage"],
                 h3_distance=match["h3_distance"],
@@ -143,6 +151,8 @@ async def get_nearby_users(
             bio=user.bio,
             current_goal=user.current_goal,
             impact_score=user.impact_score,
+            is_focusing=user.is_focusing,
+            current_focus_goal=user.current_focus_goal,
         )
         for user in nearby_users
     ]
@@ -229,6 +239,22 @@ async def give_impact(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target user not found",
+        )
+
+    # Check for duplicate/rapid impacts (rate limiting) - check last 24 hours
+    from datetime import datetime, timedelta
+    recent_query = select(Interaction).where(
+        Interaction.from_user_id == current_user.id
+    ).where(
+        Interaction.to_user_id == request.to_user_id
+    ).where(
+        Interaction.created_at >= datetime.utcnow() - timedelta(hours=24)
+    )
+    recent_result = await session.execute(recent_query)
+    if recent_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="You've already given impact to this user recently. Please wait 24 hours.",
         )
 
     # Analyze feedback
@@ -365,3 +391,66 @@ async def get_connection_status(
     return {
         "is_connected": existing is not None,
     }
+
+
+@router.get("/connections", response_model=list[dict])
+async def get_connections(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """Get all confirmed connections."""
+    query = (
+        select(Interaction, User)
+        .join(User, Interaction.to_user_id == User.id)
+        .where(
+            Interaction.from_user_id == current_user.id,
+            Interaction.type == "connect",
+        )
+        .order_by(Interaction.created_at.desc())
+    )
+    result = await session.execute(query)
+    connections = []
+
+    for interaction, user in result:
+        connections.append({
+            "user_id": user.id,
+            "username": user.username,
+            "bio": user.bio,
+            "current_goal": user.current_goal,
+            "impact_score": user.impact_score,
+            "is_focusing": user.is_focusing,
+            "current_focus_goal": user.current_focus_goal,
+            "connected_at": interaction.created_at.isoformat(),
+        })
+
+    return connections
+
+
+@router.get("/pending", response_model=list[dict])
+async def get_pending_connections(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[dict]:
+    """Get pending connection requests sent by current user."""
+    query = (
+        select(Interaction, User)
+        .join(User, Interaction.to_user_id == User.id)
+        .where(
+            Interaction.from_user_id == current_user.id,
+            Interaction.type == "connect",
+        )
+        .order_by(Interaction.created_at.desc())
+    )
+    result = await session.execute(query)
+    pending = []
+
+    for interaction, user in result:
+        pending.append({
+            "user_id": user.id,
+            "username": user.username,
+            "bio": user.bio,
+            "current_goal": user.current_goal,
+            "sent_at": interaction.created_at.isoformat(),
+        })
+
+    return pending

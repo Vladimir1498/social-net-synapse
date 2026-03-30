@@ -10,6 +10,7 @@ from app.models import FocusSession, Interaction, Post, User
 from app.schemas import (
     FocusSessionResponse,
     FocusSessionStart,
+    NotificationResponse,
     SyncGoalRequest,
     SyncGoalResponse,
     UpdateLocationRequest,
@@ -277,6 +278,12 @@ async def start_focus_session(
         goal=request.goal,
     )
     session.add(focus_session)
+    
+    # Update user focus state
+    current_user.is_focusing = True
+    current_user.current_focus_goal = request.goal
+    session.add(current_user)
+    
     await session.flush()
     await session.refresh(focus_session)
 
@@ -324,6 +331,12 @@ async def end_focus_session(
     )
 
     session.add(focus_session)
+    
+    # Clear user focus state
+    current_user.is_focusing = False
+    current_user.current_focus_goal = None
+    session.add(current_user)
+    
     await session.flush()
     await session.refresh(focus_session)
 
@@ -350,3 +363,83 @@ async def get_current_focus_session(
     )
     result = await session.execute(query)
     return result.scalar_one_or_none()
+
+
+@router.get("/notifications", response_model=list[NotificationResponse])
+async def get_notifications(
+    limit: int = 20,
+    unread_only: bool = False,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> list[NotificationResponse]:
+    """Get user notifications.
+
+    Args:
+        limit: Maximum number of notifications.
+        unread_only: Only return unread notifications.
+        current_user: Authenticated user.
+        session: Database session.
+
+    Returns:
+        List of notifications.
+    """
+    query = (
+        select(Interaction, User.username)
+        .join(User, Interaction.from_user_id == User.id)
+        .where(Interaction.to_user_id == current_user.id)
+        .order_by(Interaction.created_at.desc())
+        .limit(limit)
+    )
+
+    if unread_only:
+        query = query.where(Interaction.is_read == False)
+
+    result = await session.execute(query)
+    notifications = []
+
+    for interaction, from_username in result:
+        # Build notification message based on type
+        if interaction.type == "impact":
+            message = f"{from_username} gave you impact!"
+        elif interaction.type == "connect":
+            message = f"{from_username} wants to connect"
+        else:
+            message = f"New interaction from {from_username}"
+
+        notifications.append(
+            NotificationResponse(
+                id=interaction.id,
+                type=interaction.type,
+                from_user_id=interaction.from_user_id,
+                from_username=from_username,
+                message=message,
+                created_at=interaction.created_at,
+                is_read=interaction.is_read,
+            )
+        )
+
+    return notifications
+
+
+@router.post("/notifications/read-all", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_all_notifications_read(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """Mark all notifications as read.
+
+    Args:
+        current_user: Authenticated user.
+        session: Database session.
+    """
+    from sqlalchemy import update
+
+    await session.execute(
+        update(Interaction)
+        .where(
+            Interaction.to_user_id == current_user.id,
+            Interaction.is_read == False,
+        )
+        .values(is_read=True)
+    )
+    await session.commit()

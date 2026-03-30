@@ -37,6 +37,8 @@ class UserResponse(BaseModel):
     bio: Optional[str] = None
     current_goal: Optional[str] = None
     impact_score: int = 0
+    is_focusing: bool = False
+    current_focus_goal: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -50,6 +52,8 @@ class UserPublic(BaseModel):
     bio: Optional[str] = None
     current_goal: Optional[str] = None
     impact_score: int = 0
+    is_focusing: bool = False
+    current_focus_goal: Optional[str] = None
     similarity_score: Optional[float] = None
 
     model_config = {"from_attributes": True}
@@ -125,6 +129,7 @@ class PostCreate(BaseModel):
     """Schema for creating a post."""
 
     content: str = Field(..., min_length=1, max_length=2000)
+    image_url: Optional[str] = Field(default=None, max_length=500)
 
 
 class PostResponse(BaseModel):
@@ -133,7 +138,11 @@ class PostResponse(BaseModel):
     id: str
     author_id: str
     author_username: Optional[str] = None
+    author_impact_score: int = 0
+    author_is_focusing: bool = False
+    author_focus_goal: Optional[str] = None
     content: str
+    image_url: Optional[str] = None
     impact_count: int = 0
     created_at: datetime
     similarity_score: Optional[float] = None
@@ -224,6 +233,36 @@ class UserStats(BaseModel):
     posts_count: int
     focus_sessions_count: int
     total_focus_minutes: int
+
+
+# ============ Network Schemas ============
+class ConnectionResponse(BaseModel):
+    """Schema for connection response."""
+
+    user_id: str
+    username: str
+    bio: Optional[str] = None
+    current_goal: Optional[str] = None
+    impact_score: int = 0
+    is_focusing: bool = False
+    current_focus_goal: Optional[str] = None
+    connected_at: Optional[str] = None
+    sent_at: Optional[str] = None
+
+
+# ============ Notification Schemas ============
+class NotificationResponse(BaseModel):
+    """Schema for notification response."""
+
+    id: str
+    type: str
+    from_user_id: Optional[str] = None
+    from_username: Optional[str] = None
+    message: str
+    created_at: datetime
+    is_read: bool
+
+    model_config = {"from_attributes": True}
 
 
 # ============ Health Check ============

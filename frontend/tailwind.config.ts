@@ -37,6 +37,9 @@ const config: Config = {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "glow": "glow 2s ease-in-out infinite alternate",
         "float": "float 6s ease-in-out infinite",
+        "focus-pulse": "focus-pulse 2s ease-in-out infinite",
+        "spark-fly": "spark-fly 0.8s ease-out forwards",
+        "synaptic-pulse": "synaptic-pulse 3s ease-in-out infinite",
       },
       keyframes: {
         glow: {
@@ -46,6 +49,18 @@ const config: Config = {
         float: {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-10px)" },
+        },
+        "focus-pulse": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.7", transform: "scale(1.1)" },
+        },
+        "spark-fly": {
+          "0%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "100%": { opacity: "0", transform: "translateY(-50px) scale(0)" },
+        },
+        "synaptic-pulse": {
+          "0%, 100%": { opacity: "0.4", width: "20%" },
+          "50%": { opacity: "1", width: "60%" },
         },
       },
       backgroundImage: {

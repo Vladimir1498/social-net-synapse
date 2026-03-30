@@ -1,10 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "export",
-  trailingSlash: true,
+  // output: "export",
+  // trailingSlash: true,
   reactStrictMode: true,
-  basePath: "/social-net-synapse",
-  assetPrefix: "/social-net-synapse/",
+  // basePath: "/social-net-synapse",
+  // assetPrefix: "/social-net-synapse/",
   images: {
     unoptimized: true,
   },

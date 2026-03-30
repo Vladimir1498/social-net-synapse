@@ -2,17 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Target, Zap, Users, Clock, TrendingUp, Plus, X } from "lucide-react";
+import { Target, Zap, Users, Clock, TrendingUp, Plus, X, Sparkles } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { PostOverlay } from "@/components/PostOverlay";
-import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact } from "@/lib/hooks";
-import { formatRelativeTime, getSimilarityBadgeClass } from "@/lib/utils";
+import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact, useFocusStreak, useLiveFocusing, useSuggestedPosts } from "@/lib/hooks";
+import { formatRelativeTime, getSimilarityBadgeClass, getTierInfo } from "@/lib/utils";
 import { Post } from "@/lib/types";
+import { api } from "@/lib/api";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function HubPage() {
   const router = useRouter();
   const { data: user, isLoading: userLoading } = useUser();
   const { data: stats } = useUserStats();
+  const { data: streak } = useFocusStreak();
+  const { data: liveFocusing } = useLiveFocusing();
   const { data: feed } = useFeed(5);
   const syncGoal = useSyncGoal();
   const createPost = useCreatePost();
@@ -24,6 +28,28 @@ export default function HubPage() {
   const [postContent, setPostContent] = useState("");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [dailyDiscovery, setDailyDiscovery] = useState<{ posts: Post[]; insights: string[] } | null>(null);
+  const [isLoadingDiscovery, setIsLoadingDiscovery] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [previousTier, setPreviousTier] = useState<string>("");
+  const [impactedPostId, setImpactedPostId] = useState<string | null>(null);
+  const [showSuggestedPosts, setShowSuggestedPosts] = useState(false);
+
+  // Suggested posts after giving impact
+  const excludeIds = impactedPostId ? [impactedPostId] : [];
+  const { data: suggestedPosts } = useSuggestedPosts(5, excludeIds);
+
+  // Check for tier upgrade
+  useEffect(() => {
+    if (stats && user) {
+      const currentTier = getTierInfo(stats.impact_score || 0).name;
+      if (previousTier && previousTier !== currentTier) {
+        setShowLevelUp(true);
+        setTimeout(() => setShowLevelUp(false), 4000);
+      }
+      setPreviousTier(currentTier);
+    }
+  }, [stats, user, previousTier]);
 
   // Check authentication and redirect to login if not authenticated
   useEffect(() => {
@@ -32,6 +58,13 @@ export default function HubPage() {
       router.push("/login");
     }
   }, [userLoading, router]);
+
+  // Force goal modal if user has no goal
+  useEffect(() => {
+    if (user && !user.current_goal && !isEditingGoal) {
+      setIsEditingGoal(true);
+    }
+  }, [user, isEditingGoal]);
 
   const handleSyncGoal = () => {
     if (goalInput.trim()) {
@@ -56,6 +89,18 @@ export default function HubPage() {
           },
         },
       );
+    }
+  };
+
+  const loadDailyDiscovery = async () => {
+    setIsLoadingDiscovery(true);
+    try {
+      const response = await api.get("/ai/daily-discovery");
+      setDailyDiscovery(response.data);
+    } catch (error) {
+      console.error("Failed to load daily discovery:", error);
+    } finally {
+      setIsLoadingDiscovery(false);
     }
   };
 
@@ -88,12 +133,62 @@ export default function HubPage() {
 
   return (
     <div className="min-h-screen p-4 md:p-6">
+      {/* Level Up Animation */}
+      <AnimatePresence>
+        {showLevelUp && (
+          <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card p-8 text-center max-w-md mx-4">
+              <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: 3, duration: 0.5 }} className="text-6xl mb-4">
+                ⬆️
+              </motion.div>
+              <h2 className="text-3xl font-bold text-bionic-accent mb-2">Level Up!</h2>
+              <p className="text-bionic-text-dim">You've reached a new tier!</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-bionic-text">
-          Welcome back, <span className="text-bionic-accent">{user?.username || "Explorer"}</span>
-        </h1>
-        <p className="text-bionic-text-dim mt-1">Your synaptic journey continues</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-bionic-text">
+              Welcome back, <span className="text-bionic-accent">{user?.username || "Explorer"}</span>
+            </h1>
+            {user?.impact_score !== undefined && (
+              <span className="text-2xl" title={`${getTierInfo(user.impact_score).name} Tier`}>
+                {getTierInfo(user.impact_score).icon}
+              </span>
+            )}
+          </div>
+
+          {/* Focus Streak */}
+          {streak && streak.current_streak > 0 && (
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/30">
+              <span className="text-lg">🔥</span>
+              <span className="text-sm font-medium text-orange-400">
+                {streak.current_streak} day{streak.current_streak > 1 ? "s" : ""}
+              </span>
+            </div>
+          )}
+
+          {/* Live Focusing */}
+          {liveFocusing && liveFocusing.count > 0 && (
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 animate-pulse">
+              <span className="text-lg">🧘</span>
+              <span className="text-sm font-medium text-indigo-400">{liveFocusing.count} focusing</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-bionic-text-dim">Your synaptic journey continues</p>
+          {user?.is_focusing && (
+            <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              Focusing
+            </span>
+          )}
+        </div>
       </header>
 
       {/* Bento Grid */}
@@ -167,6 +262,40 @@ export default function HubPage() {
           <p className="text-bionic-text-dim text-sm mt-2">Total productive time</p>
         </div>
 
+        {/* Daily Discovery Card */}
+        <div className="bento-item-full animate-fade-in stagger-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-400" />
+              <h2 className="text-lg font-semibold">Daily Discovery</h2>
+            </div>
+            <button onClick={loadDailyDiscovery} disabled={isLoadingDiscovery} className="text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50">
+              {isLoadingDiscovery ? "Loading..." : "Refresh"}
+            </button>
+          </div>
+          {dailyDiscovery ? (
+            <div className="space-y-3">
+              {dailyDiscovery.posts?.slice(0, 3).map((post: Post) => (
+                <button key={post.id} onClick={() => handleOpenPost(post)} className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                  <p className="text-sm text-bionic-text line-clamp-2">{post.content}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-bionic-text-dim">@{post.author_username}</span>
+                    {post.author_impact_score !== undefined && post.author_impact_score > 100 && <span className="text-amber-400 text-xs">★ Expert</span>}
+                  </div>
+                </button>
+              ))}
+              {dailyDiscovery.insights?.length > 0 && (
+                <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                  <h4 className="text-xs font-medium text-purple-300 mb-1">AI Insights</h4>
+                  <p className="text-sm text-bionic-text-dim">{dailyDiscovery.insights[0]}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-bionic-text-dim">Click Refresh to discover trending content from experts</p>
+          )}
+        </div>
+
         {/* Action Cards */}
         <div className="bento-item-full animate-fade-in stagger-5">
           <div className="flex items-center gap-2 mb-4">
@@ -226,6 +355,12 @@ export default function HubPage() {
                     <p className="text-bionic-text line-clamp-2">{post.content}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-sm text-bionic-text-dim">@{post.author_username}</span>
+                      {post.author_impact_score !== undefined && (
+                        <span className="text-lg" title={`${getTierInfo(post.author_impact_score).name}`}>
+                          {getTierInfo(post.author_impact_score).icon}
+                        </span>
+                      )}
+                      {post.author_impact_score !== undefined && post.author_impact_score > 100 && <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">★</span>}
                       <span className="text-sm text-bionic-text-dim">•</span>
                       <span className="text-sm text-bionic-text-dim">{formatRelativeTime(post.created_at)}</span>
                       {post.is_impacted_by_me && (
@@ -255,7 +390,14 @@ export default function HubPage() {
                 </div>
               </div>
             ))}
-            {(!feed?.posts || feed.posts.length === 0) && <p className="text-bionic-text-dim text-center py-8">No posts yet. Set your goal to get personalized content.</p>}
+            {(!feed?.posts || feed.posts.length === 0) && (
+              <div className="text-center py-8">
+                <p className="text-bionic-text-dim">No posts yet. Set your goal to get personalized content.</p>
+                <button onClick={() => setIsEditingGoal(true)} className="btn-primary mt-4">
+                  Set Your Goal
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -293,7 +435,62 @@ export default function HubPage() {
       )}
 
       {/* Post Overlay */}
-      <PostOverlay post={selectedPost} isOpen={showOverlay} onClose={handleCloseOverlay} onImpact={handleImpact} />
+      <PostOverlay
+        post={selectedPost}
+        isOpen={showOverlay}
+        onClose={handleCloseOverlay}
+        onImpact={handleImpact}
+        onImpactSuccess={(postId) => {
+          setImpactedPostId(postId);
+          setShowSuggestedPosts(true);
+        }}
+      />
+
+      {/* Suggested Posts After Impact */}
+      <AnimatePresence>
+        {showSuggestedPosts && suggestedPosts?.posts && suggestedPosts.posts.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed inset-0 z-40 bg-bionic-bg/95 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="max-w-md mx-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">Keep the momentum! 🔥</h2>
+                <button onClick={() => setShowSuggestedPosts(false)} className="text-bionic-text-dim hover:text-bionic-text">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <p className="text-bionic-text-dim mb-4">More posts you might like:</p>
+              <div className="space-y-4">
+                {suggestedPosts.posts.map((post) => (
+                  <div key={post.id} className="glass-card p-4 card-hover">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">{post.author_username?.[0]?.toUpperCase() || "?"}</div>
+                      <span className="font-medium">{post.author_username}</span>
+                    </div>
+                    <p className="text-bionic-text-dim text-sm mb-2">{post.content}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-bionic-text-dim text-sm">
+                        <Zap className="w-4 h-4 text-violet-400" />
+                        <span>{post.impact_count} impacts</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedPost(post);
+                          setShowOverlay(true);
+                        }}
+                        className="text-violet-400 text-sm hover:text-violet-300"
+                      >
+                        View →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setShowSuggestedPosts(false)} className="w-full mt-6 py-3 rounded-xl bg-zinc-800 text-zinc-400">
+                Close
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <BottomNavigation />
     </div>

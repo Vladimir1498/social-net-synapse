@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { BottomNavigation } from "@/components/navigation";
 import { useUser, useMatches, useUpdateLocation, useGiveImpact, useConnect, useConnectionStatus } from "@/lib/hooks";
-import { getSimilarityBadgeClass } from "@/lib/utils";
+import { getSimilarityBadgeClass, getTierInfo } from "@/lib/utils";
 import { MatchResult } from "@/lib/types";
 
 // Connection Button Component
@@ -25,16 +25,21 @@ function ConnectionButton({ userId, onConnect, isPending }: { userId: string; on
   };
 
   return (
-    <button onClick={handleClick} disabled={isPending} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${is_connected ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
+    <button onClick={handleClick} disabled={isPending} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${is_connected ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30" : isPending ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
       {is_connected ? (
         <>
           <MessageSquare className="w-4 h-4" />
-          Message
+          Connected
+        </>
+      ) : isPending ? (
+        <>
+          <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          Pending
         </>
       ) : (
         <>
           <UserPlus className="w-4 h-4" />
-          {isPending ? "Connecting..." : "Connect"}
+          Connect
         </>
       )}
     </button>
@@ -183,6 +188,9 @@ export default function RadarPage() {
           <Radar className="w-12 h-12 text-bionic-text-dim mx-auto mb-4" />
           <p className="text-bionic-text-dim">No matches found nearby</p>
           <p className="text-bionic-text-dim text-sm mt-2">Try expanding your search or updating your goal</p>
+          <button onClick={() => router.push("/")} className="btn-primary mt-4">
+            Update Your Goal
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -192,8 +200,15 @@ export default function RadarPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-semibold text-bionic-text">{match.user.username}</h3>
+                    {match.user.is_focusing && (
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                        Focusing
+                      </span>
+                    )}
                     <span className={getSimilarityBadgeClass(match.similarity_percentage)}>{match.similarity_percentage.toFixed(0)}%</span>
                     {match.is_neighbor && <span className="badge-accent">Nearby</span>}
+                    {match.similarity_percentage >= 90 && <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-cyan-500/20 border border-violet-400/50 text-violet-300 text-xs font-medium animate-pulse">🧠 Synaptic</span>}
                   </div>
 
                   {match.user.current_goal && <p className="text-sm text-bionic-text-dim mb-2">Goal: {match.user.current_goal}</p>}
@@ -202,7 +217,7 @@ export default function RadarPage() {
 
                   <div className="flex items-center gap-4 mt-3">
                     <div className="flex items-center gap-1 text-sm text-bionic-text-dim">
-                      <Zap className="w-4 h-4 text-bionic-warning" />
+                      <span title={`${getTierInfo(match.user.impact_score).name} Tier`}>{getTierInfo(match.user.impact_score).icon}</span>
                       <span>{match.user.impact_score} impact</span>
                     </div>
                     <div className="text-sm text-bionic-text-dim">{match.h3_distance} cells away</div>

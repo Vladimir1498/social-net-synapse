@@ -42,6 +42,10 @@ class User(SQLModel, table=True):
     # Impact Score (replaces likes)
     impact_score: int = Field(default=0)
     
+    # Focus Mode state (for live status)
+    is_focusing: bool = Field(default=False)
+    current_focus_goal: Optional[str] = Field(default=None, sa_column=Column(Text))
+    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(
@@ -81,6 +85,9 @@ class Post(SQLModel, table=True):
         sa_column=Column(Vector(384)),
     )
     
+    # Media
+    image_url: Optional[str] = Field(default=None, max_length=500)
+    
     # Metadata
     impact_count: int = Field(default=0)
     
@@ -115,6 +122,9 @@ class Interaction(SQLModel, table=True):
     # Feedback content (for impact verification)
     feedback_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     is_constructive: Optional[bool] = Field(default=None)
+    
+    # Read status
+    is_read: bool = Field(default=False)
     
     # Timestamp
     created_at: datetime = Field(default_factory=datetime.utcnow)

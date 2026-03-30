@@ -1,32 +1,63 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, User } from "lucide-react";
+import { X, Zap, User, Brain, Leaf, Zap as ZapIcon, Bookmark } from "lucide-react";
 import { Post } from "@/lib/types";
+import { getTierInfo } from "@/lib/utils";
 import { useState } from "react";
 import confetti from "canvas-confetti";
+import { useSaveToKnowledge } from "@/lib/hooks";
 
 interface PostOverlayProps {
   post: Post | null;
   isOpen: boolean;
   onClose: () => void;
   onImpact: (postId: string, feedback: string) => Promise<void>;
+  onImpactSuccess?: (postId: string) => void;
 }
 
-export function PostOverlay({ post, isOpen, onClose, onImpact }: PostOverlayProps) {
+export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }: PostOverlayProps) {
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showImpactForm, setShowImpactForm] = useState(false);
   const [impactSuccess, setImpactSuccess] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [saveToKnowledge, setSaveToKnowledge] = useState(false);
+
+  const saveKnowledgeMutation = useSaveToKnowledge();
+
+  const quickTags = ["Clear", "Helpful", "Innovative", "Inspiring", "Actionable"];
+
+  const handleTagClick = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter((t) => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
 
   if (!post) return null;
 
   const handleImpact = async () => {
-    if (feedback.length < 10) return;
+    if (feedback.length < 10 && selectedTags.length === 0) return;
 
     setIsSubmitting(true);
+    setIsVerifying(true);
+
+    // Simulate verification delay
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    setIsVerifying(false);
+
     try {
-      await onImpact(post.id, feedback);
+      // Add tags to feedback if selected
+      const fullFeedback = selectedTags.length > 0 ? `${selectedTags.join(", ")}. ${feedback}` : feedback;
+      await onImpact(post.id, fullFeedback);
+      // Save to knowledge base if checked
+      if (saveToKnowledge) {
+        await saveKnowledgeMutation.mutateAsync({ postId: post.id });
+      }
+
       setImpactSuccess(true);
 
       // Trigger confetti effect
@@ -38,6 +69,7 @@ export function PostOverlay({ post, isOpen, onClose, onImpact }: PostOverlayProp
       });
 
       setTimeout(() => {
+        onImpactSuccess?.(post.id);
         onClose();
         setFeedback("");
         setShowImpactForm(false);
@@ -81,8 +113,28 @@ export function PostOverlay({ post, isOpen, onClose, onImpact }: PostOverlayProp
                   <User className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-white">{post.author_username}</p>
-                  <p className="text-sm text-zinc-400">{formatDate(post.created_at)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-white">{post.author_username}</p>
+                    {post.author_impact_score !== undefined && (
+                      <span className="text-lg" title={getTierInfo(post.author_impact_score).name}>
+                        {getTierInfo(post.author_impact_score).icon}
+                      </span>
+                    )}
+                    {post.author_impact_score !== undefined && post.author_impact_score > 100 && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium border border-amber-400/50 shadow-[0_0_10px_rgba(251,191,36,0.3)]" title="Verified Expert">
+                        ★ Expert
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-zinc-400">
+                    <span>{formatDate(post.created_at)}</span>
+                    {post.author_is_focusing && (
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                        🧘 {post.author_focus_goal || "Focusing"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
@@ -98,12 +150,25 @@ export function PostOverlay({ post, isOpen, onClose, onImpact }: PostOverlayProp
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-6 pt-6 border-t border-white/10">
                 {post.similarity_score !== undefined && <div className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-sm">{post.similarity_score.toFixed(1)}% similar</div>}
                 <div className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm">{post.impact_count} impacts</div>
+                {post.author_is_focusing && (
+                  <div className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-sm flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                    In Focus
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Impact Section - Sticky at bottom */}
             {!impactSuccess ? (
-              <div className="flex-shrink-0 p-4 md:p-6 pb-[120px] md:pb-6 border-t border-white/10 bg-zinc-900/90 backdrop-blur-sm rounded-b-2xl">
+              <div className="flex-shrink-0 p-4 md:p-6 pb-[120px] md:pb-6 border-t border-white/10 bg-zinc-900/90 backdrop-blur-sm rounded-b-2xl space-y-3">
+                {/* Join Focus Session button if author is focusing */}
+                {post.author_is_focusing && (
+                  <button className="w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-500 hover:to-purple-500">
+                    <span className="text-lg">🧘</span>
+                    <span>Join Focus Session</span>
+                  </button>
+                )}
                 {!showImpactForm ? (
                   <button onClick={() => setShowImpactForm(true)} disabled={post.is_impacted_by_me} className={`w-full py-3.5 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${post.is_impacted_by_me ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
                     <Zap className="w-5 h-5" />
@@ -111,14 +176,37 @@ export function PostOverlay({ post, isOpen, onClose, onImpact }: PostOverlayProp
                   </button>
                 ) : (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3">
-                    <label className="block text-sm font-medium text-zinc-400">How did this post help you? (min 10 chars)</label>
+                    <label className="block text-sm font-medium text-zinc-400">How did this post help you?</label>
+
+                    {/* Quick Tags */}
+                    <div className="flex flex-wrap gap-2">
+                      {quickTags.map((tag) => (
+                        <button key={tag} onClick={() => handleTagClick(tag)} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${selectedTags.includes(tag) ? "bg-violet-500/30 text-violet-300 border border-violet-400/50" : "bg-zinc-800/50 text-zinc-400 border border-white/10 hover:border-violet-500/30"}`}>
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+
                     <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Share your feedback..." className="w-full h-20 px-4 py-3 rounded-xl bg-zinc-800/50 border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 resize-none text-base" />
+
+                    {/* Save to Knowledge Base */}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={saveToKnowledge} onChange={() => setSaveToKnowledge(!saveToKnowledge)} className="w-4 h-4 rounded border-white/30 bg-white/10 text-violet-500 focus:ring-violet-500" />
+                      <span className="text-sm text-zinc-400">Save to my Knowledge Base</span>
+                    </label>
+
                     <div className="flex gap-3">
-                      <button onClick={() => setShowImpactForm(false)} className="flex-1 py-3 rounded-xl border border-white/10 text-zinc-400 hover:bg-white/5 transition-colors">
+                      <button
+                        onClick={() => {
+                          setShowImpactForm(false);
+                          setSelectedTags([]);
+                        }}
+                        className="flex-1 py-3 rounded-xl border border-white/10 text-zinc-400 hover:bg-white/5 transition-colors"
+                      >
                         Cancel
                       </button>
-                      <button onClick={handleImpact} disabled={feedback.length < 10 || isSubmitting} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${feedback.length < 10 || isSubmitting ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
-                        {isSubmitting ? "Sending..." : "Send Impact"}
+                      <button onClick={handleImpact} disabled={(feedback.length < 10 && selectedTags.length === 0) || isSubmitting} className={`flex-1 py-3 rounded-xl font-semibold transition-all ${(feedback.length < 10 && selectedTags.length === 0) || isSubmitting ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
+                        {isVerifying ? "Verifying..." : isSubmitting ? "Sending..." : "Send Impact"}
                       </button>
                     </div>
                   </motion.div>

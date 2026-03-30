@@ -37,3 +37,30 @@ export function getSimilarityBadgeClass(similarity: number): string {
   if (similarity >= 40) return "similarity-medium";
   return "similarity-low";
 }
+
+// Impact Tier system
+export type ImpactTier = 'observer' | 'contributor' | 'catalyst' | 'synapse_node';
+
+export interface TierInfo {
+  name: string;
+  icon: string;
+  color: string;
+}
+
+export function getImpactTier(score: number): ImpactTier {
+  if (score >= 200) return 'synapse_node';
+  if (score >= 51) return 'catalyst';
+  if (score >= 11) return 'contributor';
+  return 'observer';
+}
+
+export function getTierInfo(score: number): TierInfo {
+  const tier = getImpactTier(score);
+  const tiers: Record<ImpactTier, TierInfo> = {
+    observer: { name: 'Observer', icon: '👁️', color: 'text-gray-400' },
+    contributor: { name: 'Contributor', icon: '🤝', color: 'text-green-400' },
+    catalyst: { name: 'Catalyst', icon: '⚡', color: 'text-yellow-400' },
+    synapse_node: { name: 'Synapse Node', icon: '🧠', color: 'text-purple-400' },
+  };
+  return tiers[tier];
+}
