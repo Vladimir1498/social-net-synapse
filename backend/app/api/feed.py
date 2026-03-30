@@ -347,6 +347,7 @@ async def impact_post(
         type="impact",
         feedback_content=feedback,
         is_constructive=is_constructive,
+        impact_points=impact_points,
     )
     session.add(interaction)
     await session.flush()

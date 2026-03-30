@@ -123,6 +123,7 @@ class Interaction(SQLModel, table=True):
     # Feedback content (for impact verification)
     feedback_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     is_constructive: Optional[bool] = Field(default=None)
+    impact_points: int = Field(default=0)
     
     # Read status
     is_read: bool = Field(default=False)
