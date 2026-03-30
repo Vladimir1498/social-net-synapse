@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
+const isStaticExport = process.env.STATIC_EXPORT === "true";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig = {
-  output: "export",
-  // trailingSlash: true,
+  ...(isStaticExport && { output: "export" }),
   reactStrictMode: true,
-  basePath: "/social-net-synapse",
-  assetPrefix: "/social-net-synapse/",
+  ...(basePath && { basePath, assetPrefix: basePath + "/" }),
   images: {
     unoptimized: true,
   },

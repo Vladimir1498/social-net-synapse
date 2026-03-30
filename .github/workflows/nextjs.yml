@@ -41,6 +41,8 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_BASE_PATH: /social-net-synapse
+          STATIC_EXPORT: "true"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
