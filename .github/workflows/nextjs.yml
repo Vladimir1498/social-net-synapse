@@ -40,7 +40,7 @@ jobs:
         working-directory: ./frontend
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://synapse-api-4tc7.onrender.com' }}
           NEXT_PUBLIC_BASE_PATH: /social-net-synapse
           STATIC_EXPORT: "true"
 
