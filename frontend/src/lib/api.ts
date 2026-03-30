@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "/social-net-synapse";
 
 export const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
@@ -27,7 +28,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        window.location.href = `${BASE_PATH}/login`;
       }
     }
     return Promise.reject(error);
