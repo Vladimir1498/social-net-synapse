@@ -27,6 +27,7 @@ class User(SQLModel, table=True):
     # Profile
     bio: Optional[str] = Field(default=None, sa_column=Column(Text))
     current_goal: Optional[str] = Field(default=None, sa_column=Column(Text))
+    avatar_url: Optional[str] = Field(default=None, max_length=500)
     
     # Semantic Vector (stored as pgvector)
     bio_vector: Optional[list[float]] = Field(
