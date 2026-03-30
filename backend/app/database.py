@@ -37,33 +37,43 @@ async_session_maker = async_sessionmaker(
 async def init_db() -> None:
     """Initialize database with extensions and tables."""
     async with engine.begin() as conn:
-        # Create pgvector extension
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        
+        # Try to create pgvector extension (may not be available on all hosts)
+        try:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        except Exception:
+            pass  # pgvector not available, vector indexes will be skipped
+
         # Create tables
         await conn.run_sync(SQLModel.metadata.create_all)
-        
-        # Create vector index for similarity search
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS users_bio_vector_idx "
-                "ON users USING ivfflat (bio_vector vector_cosine_ops) "
-                "WITH (lists = 100)"
+
+        # Create vector indexes for similarity search (only if pgvector is available)
+        try:
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS users_bio_vector_idx "
+                    "ON users USING ivfflat (bio_vector vector_cosine_ops) "
+                    "WITH (lists = 100)"
+                )
             )
-        )
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS posts_content_vector_idx "
-                "ON posts USING ivfflat (content_vector vector_cosine_ops) "
-                "WITH (lists = 100)"
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS posts_content_vector_idx "
+                    "ON posts USING ivfflat (content_vector vector_cosine_ops) "
+                    "WITH (lists = 100)"
+                )
             )
-        )
+        except Exception:
+            pass  # pgvector indexes not available
+
         # Create H3 index for spatial queries
-        await conn.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS users_h3_idx ON users (h3_index)"
+        try:
+            await conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS users_h3_idx ON users (h3_index)"
+                )
             )
-        )
+        except Exception:
+            pass
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
