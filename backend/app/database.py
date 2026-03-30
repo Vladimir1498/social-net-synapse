@@ -46,6 +46,20 @@ async def init_db() -> None:
         # Create tables
         await conn.run_sync(SQLModel.metadata.create_all)
 
+        # Add missing columns for existing databases (migrations)
+        migrations = [
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)",
+            "ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)",
+            "ALTER TABLE interactions ADD COLUMN IF NOT EXISTS post_id VARCHAR",
+            "ALTER TABLE interactions ADD COLUMN IF NOT EXISTS impact_points INTEGER DEFAULT 0",
+            "CREATE INDEX IF NOT EXISTS ix_interactions_post_id ON interactions (post_id)",
+        ]
+        for migration in migrations:
+            try:
+                await conn.execute(text(migration))
+            except Exception:
+                pass
+
         # Create vector indexes for similarity search (only if pgvector is available)
         try:
             await conn.execute(

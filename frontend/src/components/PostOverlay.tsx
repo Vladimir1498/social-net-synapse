@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, User, Brain, Leaf, Zap as ZapIcon, Bookmark } from "lucide-react";
+import { X, Zap, User } from "lucide-react";
 import { Post } from "@/lib/types";
 import { getTierInfo } from "@/lib/utils";
 import { useState } from "react";
@@ -145,6 +145,11 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
             {/* Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
               <p className="text-base md:text-lg text-zinc-200 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+              {post.image_url && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-white/10">
+                  <img src={post.image_url} alt="Post image" className="w-full max-h-96 object-contain" />
+                </div>
+              )}
 
               {/* Stats */}
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-6 pt-6 border-t border-white/10">

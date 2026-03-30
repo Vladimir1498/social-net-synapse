@@ -26,30 +26,18 @@ export default function HubPage() {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [postContent, setPostContent] = useState("");
+  const [postImageUrl, setPostImageUrl] = useState("");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showOverlay, setShowOverlay] = useState(false);
   const [dailyDiscovery, setDailyDiscovery] = useState<{ posts: Post[]; insights: string[] } | null>(null);
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [previousTier, setPreviousTier] = useState<string>("");
   const [impactedPostId, setImpactedPostId] = useState<string | null>(null);
   const [showSuggestedPosts, setShowSuggestedPosts] = useState(false);
 
   // Suggested posts after giving impact
   const excludeIds = impactedPostId ? [impactedPostId] : [];
   const { data: suggestedPosts } = useSuggestedPosts(5, excludeIds);
-
-  // Check for tier upgrade
-  useEffect(() => {
-    if (stats && user) {
-      const currentTier = getTierInfo(stats.impact_score || 0).name;
-      if (previousTier && previousTier !== currentTier) {
-        setShowLevelUp(true);
-        setTimeout(() => setShowLevelUp(false), 4000);
-      }
-      setPreviousTier(currentTier);
-    }
-  }, [stats, user, previousTier]);
 
   // Check authentication and redirect to login if not authenticated
   useEffect(() => {
@@ -74,14 +62,13 @@ export default function HubPage() {
   };
 
   const handleCreatePost = () => {
-    console.log("handleCreatePost called", { postContent: postContent.trim() });
     if (postContent.trim()) {
       createPost.mutate(
-        { content: postContent.trim() },
+        { content: postContent.trim(), image_url: postImageUrl.trim() || undefined },
         {
-          onSuccess: (data) => {
-            console.log("Post created successfully:", data);
+          onSuccess: () => {
             setPostContent("");
+            setPostImageUrl("");
             setShowPostModal(false);
           },
           onError: (error) => {
@@ -353,6 +340,11 @@ export default function HubPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <p className="text-bionic-text line-clamp-2">{post.content}</p>
+                    {post.image_url && (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                        <img src={post.image_url} alt="Post image" className="w-full max-h-32 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-sm text-bionic-text-dim">@{post.author_username}</span>
                       {post.author_impact_score !== undefined && (
@@ -413,6 +405,18 @@ export default function HubPage() {
               </button>
             </div>
             <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder="Share your thoughts..." className="w-full h-32 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none mb-4" />
+            <input
+              type="url"
+              value={postImageUrl}
+              onChange={(e) => setPostImageUrl(e.target.value)}
+              placeholder="Image URL (optional)"
+              className="w-full px-4 py-2 rounded-xl glass-input text-bionic-text mb-4"
+            />
+            {postImageUrl && (
+              <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
+                <img src={postImageUrl} alt="Preview" className="w-full max-h-48 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              </div>
+            )}
             <div className="flex justify-between items-center mb-4">
               <span className="text-xs text-bionic-text-dim">{postContent.length}/2000 characters</span>
             </div>
@@ -421,6 +425,7 @@ export default function HubPage() {
                 onClick={() => {
                   setShowPostModal(false);
                   setPostContent("");
+                  setPostImageUrl("");
                 }}
                 className="btn-secondary flex-1"
               >

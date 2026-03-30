@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User, Mail, LogOut, Edit2, Save, Zap, TrendingUp } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
-import { useUser, useUserStats, useSkillMap, useImpactHistory } from "@/lib/hooks";
+import { useUser, useUserStats, useSkillMap, useImpactHistory, useUpdateProfile } from "@/lib/hooks";
 import { formatRelativeTime } from "@/lib/utils";
 
 export default function ProfilePage() {
@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const { data: stats } = useUserStats();
   const { data: skillMap } = useSkillMap();
   const { data: impactHistory } = useImpactHistory(10);
+  const updateProfile = useUpdateProfile();
 
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
@@ -35,8 +36,14 @@ export default function ProfilePage() {
   }, [user]);
 
   const handleSave = () => {
-    // TODO: Implement profile update
-    setIsEditing(false);
+    updateProfile.mutate(
+      { username: username !== user?.username ? username : undefined, bio: bio || undefined },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+        },
+      },
+    );
   };
 
   const handleLogout = () => {

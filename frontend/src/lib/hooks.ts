@@ -435,3 +435,18 @@ export function useImpactHistory(limit: number = 20) {
     },
   });
 }
+
+// Update Profile
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation<User, Error, { username?: string; bio?: string }>({
+    mutationFn: async (profileData) => {
+      const { data } = await api.put<User>("/users/me", profileData);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}

@@ -4,6 +4,7 @@ export interface User {
   email: string;
   username: string;
   bio?: string;
+  avatar_url?: string;
   current_goal?: string;
   impact_score: number;
   is_focusing: boolean;
@@ -15,6 +16,7 @@ export interface UserPublic {
   id: string;
   username: string;
   bio?: string;
+  avatar_url?: string;
   current_goal?: string;
   impact_score: number;
   is_focusing: boolean;
@@ -83,6 +85,7 @@ export interface Post {
   id: string;
   author_id: string;
   author_username?: string;
+  author_avatar_url?: string;
   author_impact_score?: number;
   author_is_focusing?: boolean;
   author_focus_goal?: string;
@@ -178,7 +181,7 @@ export interface Notification {
   from_username?: string;
   message: string;
   created_at: string;
-  read: boolean;
+  is_read: boolean;
 }
 
 // WebSocket types

@@ -241,6 +241,9 @@ body {
 .stagger-5 {
   animation-delay: 0.5s;
 }
+.stagger-6 {
+  animation-delay: 0.6s;
+}
 
 /* Safe area for mobile devices with bottom navigation */
 .safe-area-bottom {

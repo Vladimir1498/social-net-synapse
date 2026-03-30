@@ -35,6 +35,7 @@ class UserResponse(BaseModel):
     email: str
     username: str
     bio: Optional[str] = None
+    avatar_url: Optional[str] = None
     current_goal: Optional[str] = None
     impact_score: int = 0
     is_focusing: bool = False
@@ -50,6 +51,7 @@ class UserPublic(BaseModel):
     id: str
     username: str
     bio: Optional[str] = None
+    avatar_url: Optional[str] = None
     current_goal: Optional[str] = None
     impact_score: int = 0
     is_focusing: bool = False
@@ -138,6 +140,7 @@ class PostResponse(BaseModel):
     id: str
     author_id: str
     author_username: Optional[str] = None
+    author_avatar_url: Optional[str] = None
     author_impact_score: int = 0
     author_is_focusing: bool = False
     author_focus_goal: Optional[str] = None

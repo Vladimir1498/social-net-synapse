@@ -366,15 +366,13 @@ async def get_impact_history(
     given = []
     for row in given_rows:
         interaction, username = row
-        # Estimate impact points (simplified)
-        points = 5 if interaction.is_constructive else 0
         given.append(ImpactHistoryEntry(
             id=str(interaction.id),
             type="given",
             target_username=username,
             source_username="",
             feedback_content=interaction.feedback_content or "",
-            impact_points=points,
+            impact_points=interaction.impact_points or 0,
             is_constructive=interaction.is_constructive,
             created_at=interaction.created_at,
         ))
@@ -394,15 +392,13 @@ async def get_impact_history(
     received = []
     for row in received_rows:
         interaction, username = row
-        # Estimate impact points
-        points = 5 if interaction.is_constructive else 0
         received.append(ImpactHistoryEntry(
             id=str(interaction.id),
             type="received",
             target_username="",
             source_username=username,
             feedback_content=interaction.feedback_content or "",
-            impact_points=points,
+            impact_points=interaction.impact_points or 0,
             is_constructive=interaction.is_constructive,
             created_at=interaction.created_at,
         ))

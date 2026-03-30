@@ -1,6 +1,7 @@
 """User and goal management API routes."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,30 +41,35 @@ async def get_current_user_profile(
     return current_user
 
 
+class UpdateProfileRequest(BaseModel):
+    """Request to update user profile."""
+
+    username: str | None = None
+    bio: str | None = None
+
+
 @router.put("/me", response_model=UserResponse)
 async def update_profile(
-    bio: str | None = None,
-    username: str | None = None,
+    profile_data: UpdateProfileRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> User:
     """Update current user profile.
 
     Args:
-        bio: New bio text.
-        username: New username.
+        profile_data: Profile update data.
         current_user: Authenticated user.
         session: Database session.
 
     Returns:
         Updated user profile.
     """
-    if bio is not None:
-        current_user.bio = bio
-    if username is not None:
+    if profile_data.bio is not None:
+        current_user.bio = profile_data.bio
+    if profile_data.username is not None:
         # Check if username is taken
         query = select(User).where(
-            User.username == username,
+            User.username == profile_data.username,
             User.id != current_user.id,
         )
         result = await session.execute(query)
@@ -72,7 +78,7 @@ async def update_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already taken",
             )
-        current_user.username = username
+        current_user.username = profile_data.username
 
     session.add(current_user)
     await session.flush()

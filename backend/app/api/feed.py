@@ -12,6 +12,23 @@ from app.schemas import FeedResponse, PostCreate, PostResponse
 router = APIRouter(prefix="/feed", tags=["Feed"])
 
 
+def _serialize_post(post: Post, author: User) -> PostResponse:
+    """Serialize a Post object with its author into PostResponse."""
+    return PostResponse(
+        id=post.id,
+        author_id=post.author_id,
+        author_username=author.username,
+        author_avatar_url=author.avatar_url,
+        author_impact_score=author.impact_score,
+        author_is_focusing=author.is_focusing,
+        author_focus_goal=author.current_focus_goal,
+        content=post.content,
+        image_url=post.image_url,
+        impact_count=post.impact_count,
+        created_at=post.created_at,
+    )
+
+
 @router.get("", response_model=FeedResponse)
 async def get_feed(
     limit: int = 10,
@@ -57,10 +74,12 @@ async def get_feed(
             p.id, 
             p.author_id, 
             p.content, 
+            p.image_url,
             p.impact_count, 
             p.created_at,
             p.content_vector <=> '{vector_str}'::vector as distance,
             u.username as author_username,
+            u.avatar_url as author_avatar_url,
             u.impact_score as author_impact_score,
             u.is_focusing as author_is_focusing,
             u.current_focus_goal as author_focus_goal,
@@ -77,7 +96,7 @@ async def get_feed(
         FROM posts p
         JOIN users u ON p.author_id = u.id
         WHERE p.content_vector IS NOT NULL
-        AND p.author_id != :user_id  -- Exclude own posts
+        AND p.author_id != :user_id
         ORDER BY final_score DESC
         LIMIT :limit OFFSET :offset
         """
@@ -90,7 +109,6 @@ async def get_feed(
 
     posts = []
     for row in result:
-        # Convert distance to similarity percentage
         similarity = round((1 - row.distance) * 100, 2)
 
         posts.append(
@@ -98,10 +116,12 @@ async def get_feed(
                 id=row.id,
                 author_id=row.author_id,
                 author_username=row.author_username,
+                author_avatar_url=row.author_avatar_url,
                 author_impact_score=row.author_impact_score or 0,
                 author_is_focusing=row.author_is_focusing or False,
                 author_focus_goal=row.author_focus_goal,
                 content=row.content,
+                image_url=row.image_url,
                 impact_count=row.impact_count,
                 created_at=row.created_at,
                 similarity_score=similarity,
@@ -133,7 +153,7 @@ async def get_recent_feed(
         List of recent posts.
     """
     query = (
-        select(Post, User.username, User.impact_score)
+        select(Post, User.username, User.avatar_url, User.impact_score, User.is_focusing, User.current_focus_goal)
         .join(User, Post.author_id == User.id)
         .order_by(Post.created_at.desc())
         .limit(limit)
@@ -143,14 +163,18 @@ async def get_recent_feed(
     result = await session.execute(query)
     posts = []
 
-    for post, username, author_impact_score in result:
+    for post, username, avatar_url, author_impact_score, author_is_focusing, author_focus_goal in result:
         posts.append(
             PostResponse(
                 id=post.id,
                 author_id=post.author_id,
                 author_username=username,
+                author_avatar_url=avatar_url,
                 author_impact_score=author_impact_score or 0,
+                author_is_focusing=author_is_focusing or False,
+                author_focus_goal=author_focus_goal,
                 content=post.content,
+                image_url=post.image_url,
                 impact_count=post.impact_count,
                 created_at=post.created_at,
             )
@@ -224,7 +248,7 @@ async def get_post(
         HTTPException: If post not found.
     """
     query = (
-        select(Post, User.username, User.impact_score, User.is_focusing, User.current_focus_goal)
+        select(Post, User.username, User.avatar_url, User.impact_score, User.is_focusing, User.current_focus_goal)
         .join(User, Post.author_id == User.id)
         .where(Post.id == post_id)
     )
@@ -238,16 +262,18 @@ async def get_post(
             detail="Post not found",
         )
 
-    post, username, author_impact_score, author_is_focusing, author_focus_goal = row
+    post, username, avatar_url, author_impact_score, author_is_focusing, author_focus_goal = row
 
     return PostResponse(
         id=post.id,
         author_id=post.author_id,
         author_username=username,
+        author_avatar_url=avatar_url,
         author_impact_score=author_impact_score or 0,
         author_is_focusing=author_is_focusing or False,
         author_focus_goal=author_focus_goal,
         content=post.content,
+        image_url=post.image_url,
         impact_count=post.impact_count,
         created_at=post.created_at,
     )
@@ -413,7 +439,7 @@ async def get_suggested_posts(
         result = await session.execute(query)
         posts = result.scalars().all()
         return {
-            "posts": [serialize_post(p) for p in posts],
+            "posts": [_serialize_post(p, p.author) for p in posts],
             "total_count": len(posts),
             "curated_by": "Recent posts",
         }
@@ -433,13 +459,14 @@ async def get_suggested_posts(
             p.id, 
             p.author_id, 
             p.content, 
+            p.image_url,
             p.impact_count,
             p.created_at,
             u.username,
             u.avatar_url,
             u.current_goal,
             u.is_focusing,
-            1 - (p.bio_vector <=> '{vector_str}') as similarity
+            1 - (p.content_vector <=> '{vector_str}') as similarity
         FROM posts p
         JOIN users u ON p.author_id = u.id
         WHERE p.author_id != '{current_user.id}'
@@ -457,20 +484,21 @@ async def get_suggested_posts(
             id=row[0],
             author_id=row[1],
             content=row[2],
-            impact_count=row[3],
-            created_at=row[4],
+            image_url=row[3],
+            impact_count=row[4],
+            created_at=row[5],
         )
         post.author = User(
             id=row[1],
-            username=row[5],
-            avatar_url=row[6],
-            current_goal=row[7],
-            is_focusing=row[8],
+            username=row[6],
+            avatar_url=row[7],
+            current_goal=row[8],
+            is_focusing=row[9],
         )
         posts.append(post)
     
     return {
-        "posts": [serialize_post(p) for p in posts],
+        "posts": [_serialize_post(p, p.author) for p in posts],
         "total_count": len(posts),
         "curated_by": "Suggested for you",
     }
