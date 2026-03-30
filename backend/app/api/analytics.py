@@ -79,15 +79,14 @@ async def get_skill_map(
     post_ids = [p.id for p in user_posts]
     if post_ids:
         impact_result = await session.execute(
-            select(func.count(Interaction.id), func.sum(Interaction.impact_points))
+            select(func.count(Interaction.id))
             .where(Interaction.post_id.in_(post_ids))
-            .where(Interaction.impact_points != None)
         )
         impact_row = impact_result.first()
         impact_count = impact_row[0] if impact_row else 0
-        total_impact = impact_row[1] if impact_row and impact_row[1] else 0
     else:
-        total_impact = 0
+        impact_count = 0
+    total_impact = 0
     
     # Get total focus minutes
     focus_result = await session.execute(

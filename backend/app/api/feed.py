@@ -298,7 +298,7 @@ async def impact_post(
     # Check for duplicate/rapid impacts (rate limiting)
     from datetime import datetime, timedelta
     recent_query = select(Interaction).where(
-        Interaction.user_id == current_user.id
+        Interaction.from_user_id == current_user.id
     ).where(
         Interaction.post_id == post_id
     ).where(
@@ -343,6 +343,7 @@ async def impact_post(
     interaction = Interaction(
         from_user_id=current_user.id,
         to_user_id=author.id,
+        post_id=post_id,
         type="impact",
         feedback_content=feedback,
         is_constructive=is_constructive,
@@ -383,7 +384,7 @@ async def get_suggested_posts(
     
     # Get recently interacted post IDs
     recent_query = select(Interaction.post_id).where(
-        Interaction.user_id == current_user.id
+        Interaction.from_user_id == current_user.id
     ).where(
         Interaction.created_at >= datetime.utcnow() - timedelta(days=7)
     )

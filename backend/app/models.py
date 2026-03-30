@@ -115,6 +115,7 @@ class Interaction(SQLModel, table=True):
     )
     from_user_id: str = Field(foreign_key="users.id", index=True)
     to_user_id: str = Field(foreign_key="users.id", index=True)
+    post_id: Optional[str] = Field(default=None, foreign_key="posts.id", index=True)
     
     # Interaction type
     type: str = Field(max_length=20)  # 'impact' | 'connect' | 'feedback'
