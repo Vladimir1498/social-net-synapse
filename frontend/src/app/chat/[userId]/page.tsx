@@ -1,7 +1,7 @@
 import ChatClient from "./ChatClient";
 
 export function generateStaticParams() {
-  return [];
+  return [{ userId: "_" }];
 }
 
 export default function ChatPage() {

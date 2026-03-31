@@ -1,7 +1,7 @@
 import ProfileClient from "./ProfileClient";
 
 export function generateStaticParams() {
-  return [];
+  return [{ profileId: "_" }];
 }
 
 export default function UserProfilePage() {
