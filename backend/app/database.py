@@ -49,9 +49,14 @@ async def init_db() -> None:
         # Add missing columns for existing databases (migrations)
         migrations = [
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP WITH TIME ZONE",
             "ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_url VARCHAR(500)",
             "ALTER TABLE interactions ADD COLUMN IF NOT EXISTS post_id VARCHAR",
             "ALTER TABLE interactions ADD COLUMN IF NOT EXISTS impact_points INTEGER DEFAULT 0",
+            "ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMP WITH TIME ZONE",
+            "ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_url VARCHAR(500)",
+            "ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type VARCHAR(20) DEFAULT 'text'",
+            "ALTER TABLE messages ALTER COLUMN content SET DEFAULT ''",
             "CREATE INDEX IF NOT EXISTS ix_interactions_post_id ON interactions (post_id)",
             "CREATE TABLE IF NOT EXISTS saved_posts (id VARCHAR PRIMARY KEY, user_id VARCHAR, post_id VARCHAR, created_at TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS comments (id VARCHAR PRIMARY KEY, post_id VARCHAR, author_id VARCHAR, content TEXT, created_at TIMESTAMP)",
@@ -63,6 +68,7 @@ async def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS ix_messages_from_user_id ON messages (from_user_id)",
             "CREATE INDEX IF NOT EXISTS ix_messages_to_user_id ON messages (to_user_id)",
             "CREATE INDEX IF NOT EXISTS ix_messages_created_at ON messages (created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_users_last_seen ON users (last_seen)",
         ]
         for migration in migrations:
             try:
