@@ -14,6 +14,7 @@ function ConnectionButton({ userId, onConnect, isPending }: { userId: string; on
   const router = useRouter();
   const { data: connectionStatus } = useConnectionStatus(userId);
   const is_connected = connectionStatus?.is_connected ?? false;
+  const is_pending = connectionStatus?.is_pending ?? false;
 
   const handleClick = () => {
     if (is_connected) {
@@ -24,16 +25,21 @@ function ConnectionButton({ userId, onConnect, isPending }: { userId: string; on
   };
 
   return (
-    <button onClick={handleClick} disabled={isPending} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${is_connected ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30" : isPending ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
+    <button onClick={handleClick} disabled={isPending || is_pending} className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${is_connected ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30" : is_pending ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : isPending ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-gradient-to-r from-violet-600 to-cyan-600 text-white hover:from-violet-500 hover:to-cyan-500"}`}>
       {is_connected ? (
         <>
           <MessageSquare className="w-4 h-4" />
-          Connected
+          Message
+        </>
+      ) : is_pending ? (
+        <>
+          <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          Pending
         </>
       ) : isPending ? (
         <>
           <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-          Pending
+          Sending...
         </>
       ) : (
         <>

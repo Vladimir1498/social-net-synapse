@@ -172,13 +172,36 @@ async def get_user_stats(
     Returns:
         User statistics.
     """
-    # Count connections
-    connections_query = select(func.count()).select_from(Interaction).where(
+    # Count mutual connections (accepted in both directions)
+    outgoing_query = select(func.count()).select_from(Interaction).where(
         Interaction.from_user_id == current_user.id,
         Interaction.type == "connect",
+        Interaction.is_read == True,
     )
-    connections_result = await session.execute(connections_query)
-    connections_count = connections_result.scalar() or 0
+    outgoing_result = await session.execute(outgoing_query)
+    outgoing_count = outgoing_result.scalar() or 0
+
+    # Only count those where reverse also exists
+    connections_count = 0
+    if outgoing_count > 0:
+        outgoing_interactions = await session.execute(
+            select(Interaction.to_user_id).where(
+                Interaction.from_user_id == current_user.id,
+                Interaction.type == "connect",
+                Interaction.is_read == True,
+            )
+        )
+        for (target_id,) in outgoing_interactions:
+            reverse = await session.execute(
+                select(Interaction).where(
+                    Interaction.from_user_id == target_id,
+                    Interaction.to_user_id == current_user.id,
+                    Interaction.type == "connect",
+                    Interaction.is_read == True,
+                )
+            )
+            if reverse.scalar_one_or_none():
+                connections_count += 1
 
     # Count posts
     posts_query = select(func.count()).select_from(Post).where(

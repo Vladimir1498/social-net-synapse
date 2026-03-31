@@ -313,7 +313,7 @@ export function usePostImpact() {
 
 // Check connection status
 export function useConnectionStatus(userId: string | null) {
-  return useQuery<{ is_connected: boolean }>({
+  return useQuery<{ is_connected: boolean; is_pending?: boolean }>({
     queryKey: ["connectionStatus", userId],
     queryFn: async () => {
       if (!userId) return { is_connected: false };

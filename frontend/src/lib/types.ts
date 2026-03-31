@@ -129,6 +129,7 @@ export interface ConnectRequest {
 export interface ConnectResponse {
   message: string;
   connection_id: string;
+  status?: "pending" | "accepted";
 }
 
 export interface Connection {

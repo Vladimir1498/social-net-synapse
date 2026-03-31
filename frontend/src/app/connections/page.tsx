@@ -9,13 +9,25 @@ import { getTierInfo } from "@/lib/utils";
 
 export default function ConnectionsPage() {
   const router = useRouter();
-  const { data: connections } = useConnections();
-  const { data: pending } = usePendingConnections();
+  const { data: connections, refetch: refetchConnections } = useConnections();
+  const { data: pending, refetch: refetchPending } = usePendingConnections();
   const acceptConnection = useConnect();
   const [tab, setTab] = useState<"connections" | "pending">("connections");
 
+  const handleAccept = (userId: string) => {
+    acceptConnection.mutate(
+      { to_user_id: userId },
+      {
+        onSuccess: () => {
+          refetchConnections();
+          refetchPending();
+        },
+      },
+    );
+  };
+
   return (
-    <div className="min-h-screen p-4 md:p-6 pb-24">
+    <div className="min-h-screen p-4 md:p-6 lg:max-w-2xl lg:mx-auto pb-24">
       <header className="mb-6">
         <div className="flex items-center gap-3">
           <Users className="w-8 h-8 text-bionic-accent" />
@@ -24,12 +36,12 @@ export default function ConnectionsPage() {
       </header>
 
       <div className="flex gap-2 mb-6">
-        <button onClick={() => setTab("connections")} className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${tab === "connections" ? "bg-bionic-accent text-bionic-bg" : "glass-button text-bionic-text-dim"}`}>
+        <button onClick={() => setTab("connections")} className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === "connections" ? "bg-bionic-accent text-bionic-bg" : "glass-button text-bionic-text-dim"}`}>
           Connected ({connections?.length || 0})
         </button>
-        <button onClick={() => setTab("pending")} className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all relative ${tab === "pending" ? "bg-bionic-accent text-bionic-bg" : "glass-button text-bionic-text-dim"}`}>
+        <button onClick={() => setTab("pending")} className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all relative ${tab === "pending" ? "bg-bionic-accent text-bionic-bg" : "glass-button text-bionic-text-dim"}`}>
           Pending ({pending?.length || 0})
-          {pending && pending.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">{pending.length}</span>}
+          {pending && pending.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">{pending.length}</span>}
         </button>
       </div>
 
@@ -48,16 +60,19 @@ export default function ConnectionsPage() {
                 </div>
                 <p className="text-sm text-bionic-text-dim truncate">{conn.current_goal || conn.bio || "No goal set"}</p>
               </div>
-              <button onClick={() => router.push(`/chat/${conn.user_id}`)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+              <button onClick={() => router.push(`/chat/${conn.user_id}`)} className="p-2.5 rounded-full bg-bionic-accent/10 hover:bg-bionic-accent/20 transition-colors">
                 <MessageCircle className="w-5 h-5 text-bionic-accent" />
               </button>
             </div>
           ))}
           {(!connections || connections.length === 0) && (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 text-bionic-text-dim mx-auto mb-3" />
-              <p className="text-bionic-text-dim">No connections yet</p>
-              <p className="text-sm text-bionic-text-dim/60 mt-1">Visit Radar to find people nearby</p>
+            <div className="text-center py-16">
+              <Users className="w-16 h-16 text-bionic-text-dim/30 mx-auto mb-4" />
+              <p className="text-bionic-text-dim text-lg">No connections yet</p>
+              <p className="text-sm text-bionic-text-dim/60 mt-2">Visit Radar to discover people nearby</p>
+              <button onClick={() => router.push("/radar")} className="mt-4 px-6 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 text-white font-medium">
+                Open Radar
+              </button>
             </div>
           )}
         </div>
@@ -72,22 +87,23 @@ export default function ConnectionsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-semibold truncate block">{conn.username}</span>
-                <p className="text-sm text-bionic-text-dim truncate">{conn.bio || "No bio"}</p>
+                <p className="text-sm text-bionic-text-dim truncate">{conn.bio || conn.current_goal || "Wants to connect"}</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => acceptConnection.mutate({ to_user_id: conn.user_id })} className="p-2 rounded-full bg-green-500/20 hover:bg-green-500/30 transition-colors">
+                <button onClick={() => handleAccept(conn.user_id)} disabled={acceptConnection.isPending} className="p-2.5 rounded-full bg-green-500/20 hover:bg-green-500/30 transition-colors disabled:opacity-50">
                   <Check className="w-5 h-5 text-green-400" />
                 </button>
-                <button className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors">
+                <button className="p-2.5 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors">
                   <X className="w-5 h-5 text-red-400" />
                 </button>
               </div>
             </div>
           ))}
           {(!pending || pending.length === 0) && (
-            <div className="text-center py-12">
-              <Clock className="w-12 h-12 text-bionic-text-dim mx-auto mb-3" />
-              <p className="text-bionic-text-dim">No pending requests</p>
+            <div className="text-center py-16">
+              <Clock className="w-16 h-16 text-bionic-text-dim/30 mx-auto mb-4" />
+              <p className="text-bionic-text-dim text-lg">No pending requests</p>
+              <p className="text-sm text-bionic-text-dim/60 mt-2">When someone wants to connect, you will see it here</p>
             </div>
           )}
         </div>

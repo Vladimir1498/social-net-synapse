@@ -298,13 +298,17 @@ async def request_connection(
 ) -> dict:
     """Request a connection with another user.
 
+    Two-step flow:
+    1. User A clicks Connect on User B -> creates pending request
+    2. User B clicks Connect on User A -> accepts, mutual connection established
+
     Args:
         request: Connection request.
         current_user: Authenticated user.
         session: Database session.
 
     Returns:
-        Connection confirmation.
+        Connection confirmation with status.
 
     Raises:
         HTTPException: If target user not found or self-connection.
@@ -329,26 +333,65 @@ async def request_connection(
             detail="Target user not found",
         )
 
-    # Check for existing connection
-    query = select(Interaction).where(
+    # Check if I already sent a request to this user
+    outgoing_query = select(Interaction).where(
         Interaction.from_user_id == current_user.id,
-        Interaction.to_user_id == target_user.id,
+        Interaction.to_user_id == request.to_user_id,
         Interaction.type == "connect",
     )
-    result = await session.execute(query)
-    existing = result.scalar_one_or_none()
+    outgoing_result = await session.execute(outgoing_query)
+    existing_outgoing = outgoing_result.scalar_one_or_none()
 
-    if existing:
+    # Check if target already sent me a request (reverse direction)
+    incoming_query = select(Interaction).where(
+        Interaction.from_user_id == request.to_user_id,
+        Interaction.to_user_id == current_user.id,
+        Interaction.type == "connect",
+    )
+    incoming_result = await session.execute(incoming_query)
+    existing_incoming = incoming_result.scalar_one_or_none()
+
+    if existing_outgoing and existing_incoming:
+        # Already fully connected in both directions
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Connection already exists",
+            detail="Already connected with this user",
         )
 
-    # Create connection
+    if existing_incoming and not existing_outgoing:
+        # Target already sent me a request — accept it
+        existing_incoming.is_read = True
+        session.add(existing_incoming)
+
+        # Create my outgoing connection (completing the mutual link)
+        interaction = Interaction(
+            from_user_id=current_user.id,
+            to_user_id=target_user.id,
+            type="connect",
+            is_read=True,
+        )
+        session.add(interaction)
+        await session.flush()
+
+        return {
+            "message": "Connection accepted",
+            "connection_id": interaction.id,
+            "status": "accepted",
+        }
+
+    if existing_outgoing:
+        # I already sent a request
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Connection request already sent",
+        )
+
+    # New pending request
     interaction = Interaction(
         from_user_id=current_user.id,
         to_user_id=target_user.id,
         type="connect",
+        is_read=False,
     )
     session.add(interaction)
     await session.flush()
@@ -356,6 +399,7 @@ async def request_connection(
     return {
         "message": "Connection request sent",
         "connection_id": interaction.id,
+        "status": "pending",
     }
 
 
@@ -365,31 +409,45 @@ async def get_connection_status(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Check if current user is connected with another user.
+    """Check if current user is connected with another user (mutual).
 
-    Args:
-        user_id: Target user ID.
-        current_user: Authenticated user.
-        session: Database session.
-
-    Returns:
-        Connection status.
+    Connected = both A->B and B->A exist with is_read=True.
     """
     from app.models import Interaction
 
-    # Check for existing connection (either direction)
-    query = select(Interaction).where(
+    # Check outgoing (me -> them, accepted)
+    outgoing = select(Interaction).where(
+        Interaction.from_user_id == current_user.id,
+        Interaction.to_user_id == user_id,
         Interaction.type == "connect",
-        (
-            (Interaction.from_user_id == current_user.id) & (Interaction.to_user_id == user_id)
-            | (Interaction.from_user_id == user_id) & (Interaction.to_user_id == current_user.id)
-        ),
+        Interaction.is_read == True,
     )
-    result = await session.execute(query)
-    existing = result.scalar_one_or_none()
+    out_result = await session.execute(outgoing)
+    has_outgoing = out_result.scalar_one_or_none() is not None
+
+    # Check incoming (them -> me, accepted)
+    incoming = select(Interaction).where(
+        Interaction.from_user_id == user_id,
+        Interaction.to_user_id == current_user.id,
+        Interaction.type == "connect",
+        Interaction.is_read == True,
+    )
+    in_result = await session.execute(incoming)
+    has_incoming = in_result.scalar_one_or_none() is not None
+
+    # Check if there's a pending request from them to me
+    pending_incoming = select(Interaction).where(
+        Interaction.from_user_id == user_id,
+        Interaction.to_user_id == current_user.id,
+        Interaction.type == "connect",
+        Interaction.is_read == False,
+    )
+    pending_result = await session.execute(pending_incoming)
+    has_pending_incoming = pending_result.scalar_one_or_none() is not None
 
     return {
-        "is_connected": existing is not None,
+        "is_connected": has_outgoing and has_incoming,
+        "is_pending": has_pending_incoming,
     }
 
 
@@ -398,30 +456,57 @@ async def get_connections(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
-    """Get all confirmed connections."""
+    """Get all confirmed (mutual) connections.
+
+    A connection is mutual when both A->B and B->A exist with is_read=True.
+    Returns the OTHER user's info for each connection.
+    """
+    from app.models import Interaction
+
+    # Find accepted outgoing interactions where the reverse also exists
     query = (
-        select(Interaction, User)
-        .join(User, Interaction.to_user_id == User.id)
+        select(Interaction)
         .where(
             Interaction.from_user_id == current_user.id,
             Interaction.type == "connect",
+            Interaction.is_read == True,
         )
         .order_by(Interaction.created_at.desc())
     )
     result = await session.execute(query)
-    connections = []
+    outgoing_accepted = result.scalars().all()
 
-    for interaction, user in result:
-        connections.append({
-            "user_id": user.id,
-            "username": user.username,
-            "bio": user.bio,
-            "current_goal": user.current_goal,
-            "impact_score": user.impact_score,
-            "is_focusing": user.is_focusing,
-            "current_focus_goal": user.current_focus_goal,
-            "connected_at": interaction.created_at.isoformat(),
-        })
+    connections = []
+    for interaction in outgoing_accepted:
+        # Verify the reverse exists (mutual)
+        reverse_query = select(Interaction).where(
+            Interaction.from_user_id == interaction.to_user_id,
+            Interaction.to_user_id == current_user.id,
+            Interaction.type == "connect",
+            Interaction.is_read == True,
+        )
+        reverse_result = await session.execute(reverse_query)
+        reverse = reverse_result.scalar_one_or_none()
+
+        if not reverse:
+            continue
+
+        # Get the other user's info
+        user_query = select(User).where(User.id == interaction.to_user_id)
+        user_result = await session.execute(user_query)
+        user = user_result.scalar_one_or_none()
+
+        if user:
+            connections.append({
+                "user_id": user.id,
+                "username": user.username,
+                "bio": user.bio,
+                "current_goal": user.current_goal,
+                "impact_score": user.impact_score,
+                "is_focusing": user.is_focusing,
+                "current_focus_goal": user.current_focus_goal,
+                "connected_at": interaction.created_at.isoformat(),
+            })
 
     return connections
 
@@ -431,26 +516,50 @@ async def get_pending_connections(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
-    """Get pending connection requests sent by current user."""
+    """Get incoming pending connection requests (need acceptance).
+
+    These are connections where someone sent me a request
+    but I haven't accepted yet (no reverse link exists).
+    """
+    from app.models import Interaction
+
+    # Find incoming requests (them -> me) that are not yet accepted
     query = (
-        select(Interaction, User)
-        .join(User, Interaction.to_user_id == User.id)
+        select(Interaction)
         .where(
-            Interaction.from_user_id == current_user.id,
+            Interaction.to_user_id == current_user.id,
             Interaction.type == "connect",
+            Interaction.is_read == False,
         )
         .order_by(Interaction.created_at.desc())
     )
     result = await session.execute(query)
-    pending = []
+    incoming_requests = result.scalars().all()
 
-    for interaction, user in result:
-        pending.append({
-            "user_id": user.id,
-            "username": user.username,
-            "bio": user.bio,
-            "current_goal": user.current_goal,
-            "sent_at": interaction.created_at.isoformat(),
-        })
+    pending = []
+    for interaction in incoming_requests:
+        # Check if I already accepted (outgoing link exists)
+        reverse_query = select(Interaction).where(
+            Interaction.from_user_id == current_user.id,
+            Interaction.to_user_id == interaction.from_user_id,
+            Interaction.type == "connect",
+        )
+        reverse_result = await session.execute(reverse_query)
+        if reverse_result.scalar_one_or_none():
+            continue  # Already accepted
+
+        # Get the sender's info
+        user_query = select(User).where(User.id == interaction.from_user_id)
+        user_result = await session.execute(user_query)
+        user = user_result.scalar_one_or_none()
+
+        if user:
+            pending.append({
+                "user_id": user.id,
+                "username": user.username,
+                "bio": user.bio,
+                "current_goal": user.current_goal,
+                "sent_at": interaction.created_at.isoformat(),
+            })
 
     return pending
