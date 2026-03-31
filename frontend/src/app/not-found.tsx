@@ -1,22 +1,33 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import dynamic from "next/dynamic";
-
-const ChatClient = dynamic(() => import("./chat/[userId]/ChatClient"), { ssr: false });
-const ProfileClient = dynamic(() => import("./profile/[profileId]/ProfileClient"), { ssr: false });
 
 function NotFoundContent() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-bionic-text-dim">Loading...</div>
+      </div>
+    );
+  }
 
   const chatMatch = pathname.match(/^\/chat\/(.+)$/);
   if (chatMatch) {
+    const ChatClient = require("./chat/[userId]/ChatClient").default;
     return <ChatClient userId={chatMatch[1]} />;
   }
 
   const profileMatch = pathname.match(/^\/profile\/(.+)$/);
   if (profileMatch) {
+    const ProfileClient = require("./profile/[profileId]/ProfileClient").default;
     return <ProfileClient profileId={profileMatch[1]} />;
   }
 

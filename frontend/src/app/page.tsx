@@ -396,55 +396,7 @@ export default function HubPage() {
               </div>
             ))}
           </div>
-          <div className="space-y-3">
-            {feed?.posts.slice(0, 3).map((post) => (
-              <div key={post.id} onClick={() => handleOpenPost(post)} className="glass-button p-4 rounded-xl card-hover cursor-pointer relative group">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-bionic-text line-clamp-2">{post.content}</p>
-                    {post.image_url && (
-                      <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                        <img src={buildImageUrl(post.image_url)} alt="Post image" className="w-full max-h-32 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-sm text-bionic-text-dim">@{post.author_username}</span>
-                      {post.author_impact_score !== undefined && (
-                        <span className="text-lg" title={`${getTierInfo(post.author_impact_score).name}`}>
-                          {getTierInfo(post.author_impact_score).icon}
-                        </span>
-                      )}
-                      {post.author_impact_score !== undefined && post.author_impact_score > 100 && <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">★</span>}
-                      <span className="text-sm text-bionic-text-dim">•</span>
-                      <span className="text-sm text-bionic-text-dim">{formatRelativeTime(post.created_at)}</span>
-                      {post.is_impacted_by_me && (
-                        <>
-                          <span className="text-sm text-bionic-text-dim">•</span>
-                          <span className="text-sm text-bionic-success">⚡ Impacted</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {post.similarity_score != null && <span className={getSimilarityBadgeClass(post.similarity_score)}>{post.similarity_score.toFixed(0)}%</span>}
-                    {/* Quick Impact Button */}
-                    {!post.is_impacted_by_me && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenPost(post);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-violet-500/20 hover:bg-violet-500/30"
-                        title="Give Impact"
-                      >
-                        <Zap className="w-4 h-4 text-violet-400" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {(!feed?.posts || feed.posts.length === 0) && (
+          {(!feed?.posts || feed.posts.length === 0) && (
               <div className="text-center py-8">
                 <p className="text-bionic-text-dim">No posts yet. Set your goal to get personalized content.</p>
                 <button onClick={() => setIsEditingGoal(true)} className="btn-primary mt-4">
@@ -452,7 +404,6 @@ export default function HubPage() {
                 </button>
               </div>
             )}
-          </div>
         </div>
       </div>
 

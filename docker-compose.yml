@@ -46,7 +46,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://synapse:synapse_secret@db:5432/synapse_db
       - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY=${XAI_API_KEY:-}
       - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-local}
       - JWT_SECRET=${JWT_SECRET:-synapse_jwt_secret_key_2024}
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
