@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     h3_resolution: int = 8  # Resolution for spatial indexing
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,https://vladimir1498.github.io"
 
     # App
     app_name: str = "Synapse"
