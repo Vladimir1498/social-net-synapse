@@ -1,6 +1,6 @@
 """Social API routes for comments, messages, search, leaderboard, saved posts."""
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from pydantic import BaseModel
@@ -22,7 +22,7 @@ async def heartbeat(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Update user's last_seen to mark them as online."""
-    current_user.last_seen = datetime.utcnow()
+    current_user.last_seen = datetime.now(timezone.utc)
     session.add(current_user)
     await session.flush()
     return {"status": "ok", "last_seen": current_user.last_seen.isoformat()}
@@ -34,17 +34,19 @@ async def get_online_status(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Check if a user is online (last_seen within 2 minutes)."""
-    from datetime import timedelta
     user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    now = datetime.utcnow()
-    is_online = user.last_seen is not None and (now - user.last_seen) < timedelta(minutes=2)
+    now = datetime.now(timezone.utc)
+    last_seen = user.last_seen
+    if last_seen is not None and last_seen.tzinfo is None:
+        last_seen = last_seen.replace(tzinfo=timezone.utc)
+    is_online = last_seen is not None and (now - last_seen) < timedelta(minutes=2)
     return {
         "user_id": user_id,
         "is_online": is_online,
-        "last_seen": user.last_seen.isoformat() if user.last_seen else None,
+        "last_seen": last_seen.isoformat() if last_seen else None,
     }
 
 
@@ -195,16 +197,13 @@ async def get_conversations(
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
     """Get list of users the current user has messaged with, with last message."""
-    from datetime import timedelta
-
     # Get distinct user IDs from messages
     sent = select(Message.to_user_id).where(Message.from_user_id == current_user.id)
     received = select(Message.from_user_id).where(Message.to_user_id == current_user.id)
-
     user_ids_result = await session.execute(sent.union(received))
     user_ids = [r[0] for r in user_ids_result.fetchall()]
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     conversations = []
     for uid in user_ids:
         user = (await session.execute(select(User).where(User.id == uid))).scalar_one_or_none()
