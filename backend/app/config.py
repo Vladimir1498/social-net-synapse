@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Embedding Configuration
     embedding_provider: Literal["local", "openai"] = "local"
     openai_api_key: str | None = None
+    xai_api_key: str | None = None
     embedding_dimension: int = 384  # 384 for local (fastembed), 1536 for OpenAI
 
     # H3 Configuration
@@ -46,6 +47,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @property
+    def llm_api_key(self) -> str | None:
+        """Get LLM API key from OPENAI_API_KEY or XAI_API_KEY."""
+        return self.openai_api_key or self.xai_api_key
 
 
 @lru_cache

@@ -24,7 +24,7 @@ async def _score_relevance_with_llm(goal: str, posts: list[dict]) -> dict[str, f
     """
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key, base_url="https://api.groq.com/openai/v1")
+    client = AsyncOpenAI(api_key=settings.llm_api_key, base_url="https://api.groq.com/openai/v1")
 
     posts_text = "\n".join(
         f"[{i}] ID={p['id']}: {p['content'][:300]}"
@@ -297,11 +297,11 @@ async def get_feed(
     scored_rows.sort(key=lambda x: x[1], reverse=True)
 
     # Take top candidates for LLM re-ranking
-    llm_fetch_limit = limit * 3 if settings.openai_api_key else limit
+    llm_fetch_limit = limit * 3 if settings.llm_api_key else limit
     scored_rows = scored_rows[:llm_fetch_limit]
 
     # If Grok API is available, use LLM to re-rank
-    if settings.openai_api_key and scored_rows and goal:
+    if settings.llm_api_key and scored_rows and goal:
         candidates = [{"id": r[0].id, "content": r[0].content} for r in scored_rows]
         llm_scores = await _score_relevance_with_llm(goal, candidates)
 

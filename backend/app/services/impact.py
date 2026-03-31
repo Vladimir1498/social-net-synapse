@@ -221,10 +221,10 @@ def get_impact_service() -> ImpactService:
     global _impact_service
 
     if _impact_service is None:
-        analyzer_type = "llm" if settings.openai_api_key else "rule"
+        analyzer_type = "llm" if settings.llm_api_key else "rule"
         _impact_service = ImpactService(
             analyzer_type=analyzer_type,
-            openai_api_key=settings.openai_api_key,
+            openai_api_key=settings.llm_api_key,
         )
 
     return _impact_service
