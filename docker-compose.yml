@@ -59,6 +59,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - uploads:/app/uploads
     networks:
       - synapse-network
 
@@ -85,6 +86,7 @@ services:
 volumes:
   pgdata:
   redisdata:
+  uploads:
 
 networks:
   synapse-network:

@@ -1,15 +1,21 @@
 """Main FastAPI application with WebSocket support."""
 
 import json
+import os
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import api_router
+from app.api.auth import get_current_user
 from app.config import get_settings
-from app.database import init_db
+from app.database import get_session, init_db
+from app.models import User
 from app.schemas import HealthCheck
 
 settings = get_settings()
@@ -68,10 +74,9 @@ manager = ConnectionManager()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown events."""
-    # Startup
+    os.makedirs("/app/uploads", exist_ok=True)
     await init_db()
     yield
-    # Shutdown
     pass
 
 
@@ -94,6 +99,50 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1")
+
+# Serve uploaded files
+app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
+
+
+# ============ File Upload ============
+@app.post("/api/v1/upload/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    ext = os.path.splitext(file.filename or "img.jpg")[1] or ".jpg"
+    filename = f"avatar_{current_user.id}{ext}"
+    filepath = os.path.join("/app/uploads", filename)
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    current_user.avatar_url = f"/uploads/{filename}"
+    session.add(current_user)
+    await session.flush()
+    return {"url": current_user.avatar_url}
+
+
+@app.post("/api/v1/upload/image")
+async def upload_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    ext = os.path.splitext(file.filename or "img.jpg")[1] or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join("/app/uploads", filename)
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    with open(filepath, "wb") as f:
+        f.write(content)
+    return {"url": f"/uploads/{filename}"}
 
 
 # ============ Health Check ============

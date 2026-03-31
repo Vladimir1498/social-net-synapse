@@ -592,3 +592,35 @@ export function useUserPosts(userId: string | null) {
     enabled: !!userId,
   });
 }
+
+// File upload hooks
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ url: string }, Error, File>({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post<{ url: string }>("/upload/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+    },
+  });
+}
+
+export function useUploadImage() {
+  return useMutation<{ url: string }, Error, File>({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await api.post<{ url: string }>("/upload/image", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
+    },
+  });
+}

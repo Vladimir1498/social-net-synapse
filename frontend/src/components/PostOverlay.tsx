@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, User, Bookmark, MessageSquare, Send } from "lucide-react";
 import { Post } from "@/lib/types";
-import { getTierInfo, formatRelativeTime } from "@/lib/utils";
+import { getTierInfo, formatRelativeTime, buildImageUrl } from "@/lib/utils";
 import { useState } from "react";
 import confetti from "canvas-confetti";
 import { useSaveToKnowledge, useComments, useCreateComment, useSavePost, useUnsavePost } from "@/lib/hooks";
@@ -152,7 +152,7 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
               <p className="text-base md:text-lg text-zinc-200 leading-relaxed whitespace-pre-wrap">{post.content}</p>
               {post.image_url && (
                 <div className="mt-4 rounded-xl overflow-hidden border border-white/10">
-                  <img src={post.image_url} alt="Post image" className="w-full max-h-96 object-contain" />
+                  <img src={buildImageUrl(post.image_url)} alt="Post image" className="w-full max-h-96 object-contain" />
                 </div>
               )}
 

@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Target, Zap, Users, Clock, TrendingUp, Plus, X, Sparkles, Bell } from "lucide-react";
+import { Target, Zap, Users, Clock, TrendingUp, Plus, X, Sparkles, Bell, Camera, Upload } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { PostOverlay } from "@/components/PostOverlay";
-import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact, useFocusStreak, useLiveFocusing, useSuggestedPosts, useNotifications } from "@/lib/hooks";
-import { formatRelativeTime, getSimilarityBadgeClass, getTierInfo } from "@/lib/utils";
+import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact, useFocusStreak, useLiveFocusing, useSuggestedPosts, useNotifications, useUploadAvatar, useUploadImage } from "@/lib/hooks";
+import { formatRelativeTime, getSimilarityBadgeClass, getTierInfo, buildImageUrl } from "@/lib/utils";
 import { Post } from "@/lib/types";
 import { api } from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,6 +22,8 @@ export default function HubPage() {
   const createPost = useCreatePost();
   const postImpact = usePostImpact();
   const { data: notifications } = useNotifications(20, true);
+  const uploadAvatar = useUploadAvatar();
+  const uploadImage = useUploadImage();
 
   const unreadCount = notifications?.filter((n) => !n.is_read).length || 0;
 
@@ -30,6 +32,8 @@ export default function HubPage() {
   const [showPostModal, setShowPostModal] = useState(false);
   const [postContent, setPostContent] = useState("");
   const [postImageUrl, setPostImageUrl] = useState("");
+  const [postImageFile, setPostImageFile] = useState<File | null>(null);
+  const [postImagePreview, setPostImagePreview] = useState("");
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showOverlay, setShowOverlay] = useState(false);
   const [dailyDiscovery, setDailyDiscovery] = useState<{ posts: Post[]; insights: string[] } | null>(null);
@@ -64,22 +68,28 @@ export default function HubPage() {
     }
   };
 
-  const handleCreatePost = () => {
-    if (postContent.trim()) {
-      createPost.mutate(
-        { content: postContent.trim(), image_url: postImageUrl.trim() || undefined },
-        {
-          onSuccess: () => {
-            setPostContent("");
-            setPostImageUrl("");
-            setShowPostModal(false);
-          },
-          onError: (error) => {
-            console.error("Error creating post:", error);
-          },
-        },
-      );
+  const handleCreatePost = async () => {
+    if (!postContent.trim()) return;
+    let imageUrl = postImageUrl.trim();
+    if (postImageFile) {
+      const result = await uploadImage.mutateAsync(postImageFile);
+      imageUrl = result.url;
     }
+    createPost.mutate(
+      { content: postContent.trim(), image_url: imageUrl || undefined },
+      {
+        onSuccess: () => {
+          setPostContent("");
+          setPostImageUrl("");
+          setPostImageFile(null);
+          setPostImagePreview("");
+          setShowPostModal(false);
+        },
+        onError: (error) => {
+          console.error("Error creating post:", error);
+        },
+      },
+    );
   };
 
   const loadDailyDiscovery = async () => {
@@ -353,7 +363,7 @@ export default function HubPage() {
                     <p className="text-bionic-text line-clamp-2">{post.content}</p>
                     {post.image_url && (
                       <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                        <img src={post.image_url} alt="Post image" className="w-full max-h-32 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        <img src={buildImageUrl(post.image_url)} alt="Post image" className="w-full max-h-32 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-2">
@@ -416,18 +426,50 @@ export default function HubPage() {
               </button>
             </div>
             <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder="Share your thoughts..." className="w-full h-32 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none mb-4" />
-            <input
-              type="url"
-              value={postImageUrl}
-              onChange={(e) => setPostImageUrl(e.target.value)}
-              placeholder="Image URL (optional)"
-              className="w-full px-4 py-2 rounded-xl glass-input text-bionic-text mb-4"
-            />
-            {postImageUrl && (
-              <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
-                <img src={postImageUrl} alt="Preview" className="w-full max-h-48 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <div className="mb-4">
+              <div className="flex gap-2 mb-2">
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setPostImageFile(file);
+                        setPostImageUrl("");
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setPostImagePreview(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-dashed border-white/20 hover:border-bionic-accent/50 transition-colors text-sm text-bionic-text-dim">
+                    <Upload className="w-4 h-4" />
+                    {postImageFile ? postImageFile.name : "Choose from device"}
+                  </div>
+                </label>
+                <input
+                  type="url"
+                  value={postImageUrl}
+                  onChange={(e) => {
+                    setPostImageUrl(e.target.value);
+                    setPostImageFile(null);
+                    setPostImagePreview(e.target.value);
+                  }}
+                  placeholder="Or paste URL"
+                  className="flex-1 px-4 py-2 rounded-xl glass-input text-bionic-text text-sm"
+                />
               </div>
-            )}
+              {postImagePreview && (
+                <div className="relative rounded-xl overflow-hidden border border-white/10">
+                  <img src={postImagePreview} alt="Preview" className="w-full max-h-48 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  <button onClick={() => { setPostImageFile(null); setPostImagePreview(""); setPostImageUrl(""); }} className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="flex justify-between items-center mb-4">
               <span className="text-xs text-bionic-text-dim">{postContent.length}/2000 characters</span>
             </div>
@@ -437,6 +479,8 @@ export default function HubPage() {
                   setShowPostModal(false);
                   setPostContent("");
                   setPostImageUrl("");
+                  setPostImageFile(null);
+                  setPostImagePreview("");
                 }}
                 className="btn-secondary flex-1"
               >

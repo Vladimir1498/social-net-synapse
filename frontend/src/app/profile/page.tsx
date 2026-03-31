@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, LogOut, Edit2, Save, Zap, TrendingUp } from "lucide-react";
+import { User, Mail, LogOut, Edit2, Save, Zap, TrendingUp, Camera } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
-import { useUser, useUserStats, useSkillMap, useImpactHistory, useUpdateProfile } from "@/lib/hooks";
-import { formatRelativeTime } from "@/lib/utils";
+import { useUser, useUserStats, useSkillMap, useImpactHistory, useUpdateProfile, useUploadAvatar } from "@/lib/hooks";
+import { formatRelativeTime, buildImageUrl } from "@/lib/utils";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function ProfilePage() {
   const { data: skillMap } = useSkillMap();
   const { data: impactHistory } = useImpactHistory(10);
   const updateProfile = useUpdateProfile();
+  const uploadAvatar = useUploadAvatar();
 
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState("");
@@ -85,9 +86,25 @@ export default function ProfilePage() {
         <div className="glass-card p-6 animate-fade-in">
           {/* Avatar */}
           <div className="flex items-center justify-center mb-6">
-            <div className="w-24 h-24 rounded-full bg-bionic-accent/20 flex items-center justify-center">
-              <span className="text-4xl font-bold text-bionic-accent">{user?.username?.charAt(0).toUpperCase() || "U"}</span>
-            </div>
+            <label className="relative w-24 h-24 rounded-full bg-bionic-accent/20 flex items-center justify-center cursor-pointer group overflow-hidden">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadAvatar.mutate(file);
+                }}
+              />
+              {user?.avatar_url ? (
+                <img src={buildImageUrl(user.avatar_url)} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl font-bold text-bionic-accent">{user?.username?.charAt(0).toUpperCase() || "U"}</span>
+              )}
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                <Camera className="w-6 h-6 text-white" />
+              </div>
+            </label>
           </div>
 
           {/* Edit Toggle */}
