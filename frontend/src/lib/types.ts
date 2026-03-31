@@ -136,6 +136,7 @@ export interface Connection {
   user_id: string;
   username: string;
   bio?: string;
+  avatar_url?: string;
   current_goal?: string;
   impact_score: number;
   is_focusing: boolean;
@@ -147,6 +148,7 @@ export interface PendingConnection {
   user_id: string;
   username: string;
   bio?: string;
+  avatar_url?: string;
   current_goal?: string;
   sent_at: string;
 }

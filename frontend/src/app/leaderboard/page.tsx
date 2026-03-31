@@ -3,7 +3,7 @@
 import { Trophy, Zap, Crown, Medal } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { useLeaderboard } from "@/lib/hooks";
-import { getTierInfo } from "@/lib/utils";
+import { getTierInfo, buildImageUrl } from "@/lib/utils";
 
 export default function LeaderboardPage() {
   const { data: leaderboard } = useLeaderboard();
@@ -29,8 +29,12 @@ export default function LeaderboardPage() {
         {leaderboard?.map((entry) => (
           <div key={entry.id} className={`glass-card p-4 flex items-center gap-4 animate-fade-in ${entry.rank <= 3 ? "border border-bionic-accent/20" : ""}`}>
             <div className="w-8 flex justify-center flex-shrink-0">{getRankIcon(entry.rank)}</div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-              {entry.username[0].toUpperCase()}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden">
+              {entry.avatar_url ? (
+                <img src={buildImageUrl(entry.avatar_url)} alt="" className="w-full h-full object-cover" />
+              ) : (
+                entry.username[0].toUpperCase()
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

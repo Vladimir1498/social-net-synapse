@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search as SearchIcon, User, FileText, Zap } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { useSearch } from "@/lib/hooks";
-import { formatRelativeTime, getTierInfo } from "@/lib/utils";
+import { formatRelativeTime, getTierInfo, buildImageUrl } from "@/lib/utils";
 
 export default function SearchPage() {
   const router = useRouter();
@@ -44,8 +44,12 @@ export default function SearchPage() {
               <div className="space-y-2">
                 {results.users.map((u) => (
                   <button key={u.id} onClick={() => router.push(`/profile/${u.id}`)} className="w-full glass-card p-3 flex items-center gap-3 hover:bg-white/5 transition-colors text-left">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                      {u.username[0].toUpperCase()}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold flex-shrink-0 overflow-hidden">
+                      {u.avatar_url ? (
+                        <img src={buildImageUrl(u.avatar_url)} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        u.username[0].toUpperCase()
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users, MessageCircle, Clock, Check, X, Zap } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { useConnections, usePendingConnections, useConnect } from "@/lib/hooks";
-import { getTierInfo } from "@/lib/utils";
+import { getTierInfo, buildImageUrl } from "@/lib/utils";
 
 export default function ConnectionsPage() {
   const router = useRouter();
@@ -49,8 +49,12 @@ export default function ConnectionsPage() {
         <div className="space-y-3">
           {connections?.map((conn) => (
             <div key={conn.user_id} className="glass-card p-4 flex items-center gap-4 animate-fade-in">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                {conn.username[0].toUpperCase()}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden">
+                {conn.avatar_url ? (
+                  <img src={buildImageUrl(conn.avatar_url)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  conn.username[0].toUpperCase()
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -82,8 +86,12 @@ export default function ConnectionsPage() {
         <div className="space-y-3">
           {pending?.map((conn) => (
             <div key={conn.user_id} className="glass-card p-4 flex items-center gap-4 animate-fade-in">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                {conn.username[0].toUpperCase()}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 overflow-hidden">
+                {conn.avatar_url ? (
+                  <img src={buildImageUrl(conn.avatar_url)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  conn.username[0].toUpperCase()
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-semibold truncate block">{conn.username}</span>

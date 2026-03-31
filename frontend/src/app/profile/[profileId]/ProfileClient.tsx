@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Zap, MessageCircle, UserPlus, Target } from "lucide-react";
 import { usePublicProfile, useUserPosts, useConnect, useConnectionStatus } from "@/lib/hooks";
-import { formatRelativeTime, getTierInfo } from "@/lib/utils";
+import { formatRelativeTime, getTierInfo, buildImageUrl } from "@/lib/utils";
 import { useState } from "react";
 
 export default function ProfileClient({ profileId: profileIdProp }: { profileId?: string } = {}) {
@@ -43,8 +43,12 @@ export default function ProfileClient({ profileId: profileIdProp }: { profileId?
 
       <div className="max-w-lg mx-auto">
         <div className="glass-card p-6 text-center animate-fade-in">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
-            {profile.username[0].toUpperCase()}
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 overflow-hidden">
+            {profile.avatar_url ? (
+              <img src={buildImageUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
+            ) : (
+              profile.username[0].toUpperCase()
+            )}
           </div>
           <h1 className="text-xl font-bold flex items-center justify-center gap-2">
             {profile.username}

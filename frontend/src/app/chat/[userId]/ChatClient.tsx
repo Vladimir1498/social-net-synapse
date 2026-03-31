@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Send, MessageCircle } from "lucide-react";
 import { useMessages, useSendMessage, useUser, usePublicProfile } from "@/lib/hooks";
+import { buildImageUrl } from "@/lib/utils";
 
 function formatDateSeparator(dateStr: string): string {
   const date = new Date(dateStr);
@@ -59,8 +60,12 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
         <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-          {(profile?.username || "?")[0].toUpperCase()}
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 overflow-hidden">
+          {profile?.avatar_url ? (
+            <img src={buildImageUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
+          ) : (
+            (profile?.username || "?")[0].toUpperCase()
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-semibold truncate">{profile?.username || "Chat"}</h1>
@@ -108,8 +113,12 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
                     {!isMine && (
                       <div className="w-7 flex-shrink-0 mr-2">
                         {showAvatar && (
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-[10px] font-bold mt-auto">
-                            {(profile?.username || "?")[0].toUpperCase()}
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-[10px] font-bold mt-auto overflow-hidden">
+                            {profile?.avatar_url ? (
+                              <img src={buildImageUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              (profile?.username || "?")[0].toUpperCase()
+                            )}
                           </div>
                         )}
                       </div>

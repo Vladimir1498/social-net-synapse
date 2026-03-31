@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { MessageCircle, ChevronRight } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { useConversations } from "@/lib/hooks";
+import { buildImageUrl } from "@/lib/utils";
 
 export default function ChatListPage() {
   const router = useRouter();
@@ -21,9 +22,13 @@ export default function ChatListPage() {
       <div className="space-y-2">
         {conversations?.map((conv) => (
           <button key={conv.user_id} onClick={() => router.push(`/chat/${conv.user_id}`)} className="w-full glass-card p-4 flex items-center gap-3 hover:bg-white/5 transition-colors text-left animate-fade-in">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 relative">
-              {conv.username[0].toUpperCase()}
-              {conv.unread_count > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">{conv.unread_count}</span>}
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 relative overflow-hidden">
+              {conv.avatar_url ? (
+                <img src={buildImageUrl(conv.avatar_url)} alt="" className="w-full h-full object-cover" />
+              ) : (
+                conv.username[0].toUpperCase()
+              )}
+              {conv.unread_count > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center z-10">{conv.unread_count}</span>}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
