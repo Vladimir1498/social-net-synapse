@@ -24,7 +24,7 @@ async def _score_relevance_with_llm(goal: str, posts: list[dict]) -> dict[str, f
     """
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key, base_url="https://api.x.ai/v1")
+    client = AsyncOpenAI(api_key=settings.openai_api_key, base_url="https://api.groq.com/openai/v1")
 
     posts_text = "\n".join(
         f"[{i}] ID={p['id']}: {p['content'][:300]}"
@@ -46,7 +46,7 @@ Score generously for genuinely relevant content, but be strict about unrelated c
 
     try:
         response = await client.chat.completions.create(
-            model="grok-2-mini",
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.2,

@@ -39,7 +39,7 @@ class LLMFeedbackAnalyzer(FeedbackAnalyzer):
         """
         from openai import AsyncOpenAI
 
-        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
+        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
 
     async def analyze(self, feedback: str) -> tuple[bool, str]:
         """Analyze feedback using GPT model.
@@ -69,7 +69,7 @@ Respond with JSON format: {"is_constructive": boolean, "reason": "brief explanat
 
         try:
             response = await self.client.chat.completions.create(
-                model="grok-2-mini",
+                model="llama-3.1-8b-instant",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Analyze this feedback: {feedback}"},
