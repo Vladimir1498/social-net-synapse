@@ -20,6 +20,8 @@ from app.schemas import HealthCheck
 
 settings = get_settings()
 
+os.makedirs("/app/uploads", exist_ok=True)
+
 
 # Connection manager for WebSocket
 class ConnectionManager:
