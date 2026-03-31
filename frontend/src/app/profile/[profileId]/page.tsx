@@ -6,6 +6,10 @@ import { usePublicProfile, useUserPosts, useConnect, useConnectionStatus } from 
 import { formatRelativeTime, getTierInfo } from "@/lib/utils";
 import { useState } from "react";
 
+export function generateStaticParams() {
+  return [];
+}
+
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();

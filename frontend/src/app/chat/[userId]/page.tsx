@@ -5,6 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Send } from "lucide-react";
 import { useMessages, useSendMessage, useUser } from "@/lib/hooks";
 
+export function generateStaticParams() {
+  return [];
+}
+
 export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
