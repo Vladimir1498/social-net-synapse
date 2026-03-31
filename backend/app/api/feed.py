@@ -79,6 +79,130 @@ def _serialize_post(post: Post, author: User) -> PostResponse:
     )
 
 
+def _expand_goal_keywords(goal: str) -> dict:
+    """Expand goal into search terms and topic tags.
+
+    Handles multilingual goals by translating common tech terms.
+    Returns {"search_terms": [...], "topics": [...]}
+    """
+    goal_lower = goal.lower()
+
+    # Translate common non-English tech terms to English equivalents
+    translations = {
+        # Russian
+        "питон": "python", "пайтон": "python", "питона": "python",
+        "джаваскрипт": "javascript", "javascript": "javascript",
+        "веб": "web", "сайт": "website", "сайты": "website",
+        "программирование": "programming", "код": "code", "кодинг": "coding",
+        "изучение": "learn", "обучение": "learn", "выучить": "learn",
+        "алгоритм": "algorithm", "алгоритмы": "algorithm",
+        "база": "database", "базы": "database", "данные": "data",
+        "машинное": "machine", "нейросеть": "neural", "нейросети": "neural",
+        "разработка": "development", "разрабатывать": "develop",
+        "приложение": "app", "приложения": "app",
+        "игра": "game", "игры": "game",
+        "дизайн": "design", "интерфейс": "interface",
+        "тест": "test", "тестирование": "testing",
+        "сервер": "server", "облако": "cloud",
+        "мобильный": "mobile", "андроид": "android",
+        "дни": "days", "день": "day", "неделя": "week", "недели": "week",
+        "месяц": "month",
+        # Ukrainian
+        "пітон": "python", "вивчення": "learn",
+    }
+
+    # Topic categories with related terms
+    topic_map = {
+        "python": ["python", "pip", "django", "flask", "pandas", "numpy", "pytorch", "jupyter", "pipenv", "pep8", "pydantic", "fastapi"],
+        "javascript": ["javascript", "js", "node", "npm", "react", "vue", "angular", "typescript", "ts", "nextjs", "express"],
+        "web": ["web", "html", "css", "frontend", "backend", "fullstack", "api", "rest", "graphql", "http", "browser"],
+        "data": ["data", "database", "sql", "postgresql", "mongodb", "redis", "analytics", "dataset", "csv"],
+        "ml": ["machine", "learning", "ml", "ai", "neural", "deep", "model", "training", "tensorflow", "pytorch"],
+        "mobile": ["mobile", "android", "ios", "flutter", "react", "swift", "kotlin", "app"],
+        "devops": ["docker", "kubernetes", "ci", "cd", "deploy", "aws", "cloud", "server", "nginx"],
+        "game": ["game", "gaming", "unity", "unreal", "gamedev", "player", "gameplay"],
+    }
+
+    # Extract words from goal
+    stop_words = {"i", "want", "to", "my", "the", "a", "an", "and", "or", "in", "on", "at", "for", "of", "with", "by", "from", "is", "are", "was", "were", "be", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "not", "but", "so", "if", "up", "out", "all", "some", "any", "no", "more", "most", "other", "into", "over", "also", "about", "very", "just", "only", "than", "then"}
+    words = [w.strip(".,!?;:\"'()[]") for w in goal_lower.split() if len(w) > 1]
+
+    search_terms = set()
+    topics = set()
+
+    for word in words:
+        if word in stop_words:
+            continue
+        # Translate non-English
+        english = translations.get(word, word)
+        search_terms.add(english)
+        # Check topic membership
+        for topic, terms in topic_map.items():
+            if english in terms:
+                topics.add(topic)
+
+    # If any word matches a topic, add all topic terms as search terms
+    for topic in topics:
+        search_terms.update(topic_map.get(topic, []))
+
+    # For numeric words like "5", "дней" → add "days" context
+    has_numbers = any(w.isdigit() for w in words)
+    if has_numbers and not topics:
+        # Generic learning goal
+        search_terms.add("learn")
+        search_terms.add("tutorial")
+        search_terms.add("course")
+
+    return {"search_terms": list(search_terms), "topics": list(topics)}
+
+
+def _score_post_relevance(content: str, search_terms: list[str], topics: list[str]) -> float:
+    """Score how relevant a post is to the user's goal (0-10).
+
+    Uses keyword matching with the expanded search terms.
+    """
+    if not search_terms:
+        return 0.0
+
+    content_lower = content.lower()
+    score = 0.0
+    matched = 0
+
+    for term in search_terms:
+        if len(term) < 2:
+            continue
+        if term in content_lower:
+            matched += 1
+            # Longer terms are more significant
+            score += 1.0 + len(term) * 0.2
+
+    if matched == 0:
+        return 0.0
+
+    # Bonus for matching multiple terms (confirms topic relevance)
+    if matched >= 3:
+        score *= 1.5
+    elif matched >= 2:
+        score *= 1.2
+
+    # Bonus if post has topic-specific terms
+    topic_bonus_terms = {
+        "python": ["python", "pip", "django", "flask", "def ", "import ", "class "],
+        "javascript": ["javascript", "js", "npm", "react", "node"],
+        "web": ["html", "css", "frontend", "backend", "api"],
+        "data": ["sql", "database", "query", "table", "data"],
+        "ml": ["machine learning", "neural", "model", "training", "ai"],
+        "game": ["game", "gameplay", "player", "level", "gaming"],
+    }
+    for topic in topics:
+        for bonus_term in topic_bonus_terms.get(topic, []):
+            if bonus_term in content_lower:
+                score += 2.0
+                break
+
+    return min(score, 10.0)
+
+
 @router.get("", response_model=FeedResponse)
 async def get_feed(
     limit: int = 10,
@@ -89,49 +213,44 @@ async def get_feed(
     """Get AI-curated feed based on user's goal.
 
     Strategy:
-    1. Fetch candidate posts using vector similarity + keyword matching
-    2. If OpenAI is available, use LLM to score relevance to goal
-    3. Return posts sorted by LLM relevance (or vector score as fallback)
+    1. Expand goal keywords (translate non-English terms)
+    2. Fetch ALL posts, score by keyword relevance in Python
+    3. Filter to only relevant posts (score > 0)
+    4. If Grok API available, re-rank with LLM
     """
     goal = (current_user.current_goal or "").strip()
-    has_vector = current_user.bio_vector is not None and not (
-        hasattr(current_user.bio_vector, "__len__") and len(current_user.bio_vector) == 0
-    )
 
-    if not goal and not has_vector:
+    if not goal:
         return {
             "posts": [],
             "total_count": 0,
             "curated_by": "Set your goal to get personalized feed",
         }
 
-    # Fetch more candidates than needed for LLM re-ranking
-    fetch_limit = limit * 3 if settings.openai_api_key else limit
+    # Expand goal keywords (translate common terms, add related words)
+    expanded = _expand_goal_keywords(goal)
+    search_terms = expanded["search_terms"]  # terms to match in post content
+    topics = expanded["topics"]  # high-level topic tags
 
-    # Extract keywords from goal for text matching
-    stop_words = {"i", "want", "to", "my", "the", "a", "an", "and", "or", "is", "are", "be", "in", "on", "at", "for", "of", "with", "by", "from", "it", "that", "this", "as", "was", "were", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "can", "may", "might", "not", "but", "so", "if", "then", "than", "very", "just", "about", "up", "out", "all", "some", "any", "each", "every", "no", "more", "most", "other", "into", "through", "during", "before", "after", "above", "below", "between", "same", "too", "own", "such", "only", "over", "also"}
-    keywords = [w.lower() for w in goal.split() if len(w) >= 3 and w.isascii() and w.lower() not in stop_words]
+    if not search_terms:
+        return {
+            "posts": [],
+            "total_count": 0,
+            "curated_by": goal,
+        }
 
-    # Build keyword ILIKE conditions
-    keyword_conditions = [f"p.content ILIKE '%{kw}%'" for kw in keywords]
-    keyword_sql = " OR ".join(keyword_conditions) if keyword_conditions else "FALSE"
+    # Fetch candidate posts (broad fetch, we score in Python)
+    fetch_limit = 200  # fetch many, filter later
 
     # Build vector comparison if available
+    has_vector = current_user.bio_vector is not None and not (
+        hasattr(current_user.bio_vector, "__len__") and len(current_user.bio_vector) == 0
+    )
     if has_vector:
         vector_str = "[" + ",".join(str(v) for v in current_user.bio_vector) + "]"
         vector_similarity = f"(1 - (p.content_vector <=> '{vector_str}'::vector))"
     else:
         vector_similarity = "0"
-
-    # Keyword match score
-    if keywords:
-        keyword_score_parts = [f"CASE WHEN p.content ILIKE '%{kw}%' THEN 1 ELSE 0 END" for kw in keywords]
-        keyword_score = f"({' + '.join(keyword_score_parts)}::float / {len(keywords)})"
-    else:
-        keyword_score = "0"
-
-    # Minimum vector similarity threshold (higher = stricter)
-    min_vector_sim = 0.4
 
     query = text(
         f"""
@@ -143,7 +262,6 @@ async def get_feed(
             p.impact_count,
             p.created_at,
             {vector_similarity} as vector_sim,
-            {keyword_score} as keyword_sim,
             u.username as author_username,
             u.avatar_url as author_avatar_url,
             u.impact_score as author_impact_score,
@@ -158,47 +276,51 @@ async def get_feed(
         FROM posts p
         JOIN users u ON p.author_id = u.id
         WHERE p.author_id != :user_id
-        AND (
-            (p.content_vector IS NOT NULL AND {vector_similarity} > {min_vector_sim})
-            {"OR (" + keyword_sql + ")" if keywords else ""}
-        )
-        ORDER BY {vector_similarity} DESC, p.created_at DESC
-        LIMIT :limit OFFSET :offset
+        ORDER BY p.created_at DESC
+        LIMIT :limit
         """
     )
 
     result = await session.execute(
         query,
-        {"limit": fetch_limit, "offset": offset, "user_id": current_user.id},
+        {"limit": fetch_limit, "user_id": current_user.id},
     )
 
-    # Collect raw rows
-    rows = []
+    # Score each post by keyword relevance
+    scored_rows = []
     for row in result:
-        rows.append(row)
+        score = _score_post_relevance(row.content, search_terms, topics)
+        if score > 0:
+            scored_rows.append((row, score))
 
-    # If OpenAI is available, use LLM to re-rank candidates
-    if settings.openai_api_key and rows and goal:
-        candidates = [{"id": row.id, "content": row.content} for row in rows]
+    # Sort by relevance score descending
+    scored_rows.sort(key=lambda x: x[1], reverse=True)
+
+    # Take top candidates for LLM re-ranking
+    llm_fetch_limit = limit * 3 if settings.openai_api_key else limit
+    scored_rows = scored_rows[:llm_fetch_limit]
+
+    # If Grok API is available, use LLM to re-rank
+    if settings.openai_api_key and scored_rows and goal:
+        candidates = [{"id": r[0].id, "content": r[0].content} for r in scored_rows]
         llm_scores = await _score_relevance_with_llm(goal, candidates)
 
-        # Sort by LLM score descending, then by vector similarity
-        rows.sort(
-            key=lambda r: (
-                llm_scores.get(r.id, 0.0),
-                float(r.vector_sim or 0),
+        # Combine: LLM score (70%) + keyword score (30%)
+        scored_rows.sort(
+            key=lambda x: (
+                llm_scores.get(x[0].id, 0.0) * 0.7 + (x[1] / 10.0) * 0.3,
             ),
             reverse=True,
         )
 
-        # Filter out posts with very low LLM relevance (< 0.2)
-        rows = [r for r in rows if llm_scores.get(r.id, 0.0) >= 0.2]
+        # Filter out posts with very low LLM relevance
+        scored_rows = [(r, s) for r, s in scored_rows if llm_scores.get(r.id, 0.0) >= 0.2]
 
-        # Take only requested limit
-        rows = rows[:limit]
+    # Take final limit
+    scored_rows = scored_rows[:limit]
 
     posts = []
-    for row in rows:
+    for row, score in scored_rows:
         similarity = round(float(row.vector_sim or 0) * 100, 2)
 
         posts.append(
