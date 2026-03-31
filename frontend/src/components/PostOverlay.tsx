@@ -12,7 +12,7 @@ interface PostOverlayProps {
   post: Post | null;
   isOpen: boolean;
   onClose: () => void;
-  onImpact: (postId: string, feedback: string) => Promise<void>;
+  onImpact: (postId: string, feedback: string) => Promise<any>;
   onImpactSuccess?: (postId: string) => void;
 }
 
@@ -21,6 +21,7 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showImpactForm, setShowImpactForm] = useState(false);
   const [impactSuccess, setImpactSuccess] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [saveToKnowledge, setSaveToKnowledge] = useState(false);
@@ -50,22 +51,19 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
     setIsSubmitting(true);
     setIsVerifying(true);
 
-    // Simulate verification delay
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setIsVerifying(false);
 
     try {
-      // Add tags to feedback if selected
       const fullFeedback = selectedTags.length > 0 ? `${selectedTags.join(", ")}. ${feedback}` : feedback;
-      await onImpact(post.id, fullFeedback);
-      // Save to knowledge base if checked
+      const result = await onImpact(post.id, fullFeedback);
       if (saveToKnowledge) {
         await saveKnowledgeMutation.mutateAsync({ postId: post.id });
       }
 
+      setEarnedPoints((result as any)?.impact_points || 0);
       setImpactSuccess(true);
 
-      // Trigger confetti effect
       confetti({
         particleCount: 100,
         spread: 70,
@@ -79,7 +77,8 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
         setFeedback("");
         setShowImpactForm(false);
         setImpactSuccess(false);
-      }, 2000);
+        setEarnedPoints(0);
+      }, 2500);
     } catch (error) {
       console.error("Impact error:", error);
     } finally {
@@ -158,7 +157,7 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
 
               {/* Stats */}
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-6 pt-6 border-t border-white/10">
-                {post.similarity_score !== undefined && <div className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-sm">{post.similarity_score.toFixed(1)}% similar</div>}
+                {post.similarity_score != null && <div className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-sm">{post.similarity_score.toFixed(1)}% similar</div>}
                 <div className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm">{post.impact_count} impacts</div>
                 <button onClick={() => setShowComments(!showComments)} className="px-3 py-1 rounded-full bg-white/5 text-zinc-400 text-sm flex items-center gap-1 hover:bg-white/10 transition-colors">
                   <MessageSquare className="w-3 h-3" />
@@ -275,7 +274,9 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
               <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex-shrink-0 p-6 pb-[120px] md:pb-6 text-center bg-zinc-900/90 backdrop-blur-sm rounded-b-2xl">
                 <div className="text-4xl mb-2">🎉</div>
                 <p className="text-xl font-semibold text-white">Impact Sent!</p>
-                <p className="text-zinc-400 mt-1 text-sm">Your feedback made a difference.</p>
+                <p className="text-zinc-400 mt-1 text-sm">
+                  {earnedPoints > 0 ? `+${earnedPoints} impact points awarded!` : "Feedback recorded (not constructive enough for points)"}
+                </p>
               </motion.div>
             )}
           </motion.div>

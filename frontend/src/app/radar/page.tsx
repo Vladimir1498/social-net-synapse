@@ -205,7 +205,7 @@ export default function RadarPage() {
                         Focusing
                       </span>
                     )}
-                    <span className={getSimilarityBadgeClass(match.similarity_percentage)}>{match.similarity_percentage.toFixed(0)}%</span>
+                    <span className={getSimilarityBadgeClass(match.similarity_percentage)}>{match.similarity_percentage?.toFixed(0)}%</span>
                     {match.is_neighbor && <span className="badge-accent">Nearby</span>}
                     {match.similarity_percentage >= 90 && <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-violet-500/20 to-cyan-500/20 border border-violet-400/50 text-violet-300 text-xs font-medium animate-pulse">🧠 Synaptic</span>}
                   </div>

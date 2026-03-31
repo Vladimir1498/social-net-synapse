@@ -46,6 +46,15 @@ export default function HubPage() {
   const excludeIds = impactedPostId ? [impactedPostId] : [];
   const { data: suggestedPosts } = useSuggestedPosts(5, excludeIds);
 
+  // Redirect from 404 (GitHub Pages dynamic routes)
+  useEffect(() => {
+    const redirectPath = sessionStorage.getItem("redirect_path");
+    if (redirectPath) {
+      sessionStorage.removeItem("redirect_path");
+      router.replace(redirectPath);
+    }
+  }, [router]);
+
   // Check authentication and redirect to login if not authenticated
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -115,7 +124,8 @@ export default function HubPage() {
   };
 
   const handleImpact = async (postId: string, feedback: string) => {
-    await postImpact.mutateAsync({ postId, feedback });
+    const result = await postImpact.mutateAsync({ postId, feedback });
+    return result;
   };
 
   if (userLoading) {
@@ -351,9 +361,49 @@ export default function HubPage() {
 
         {/* AI-Curated Feed Preview */}
         <div className="bento-item-full animate-fade-in stagger-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Curated For You</h2>
-            <span className="text-sm text-bionic-text-dim">Based on: {feed?.curated_by || "your interests"}</span>
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <h2 className="text-base sm:text-lg font-semibold">Curated For You</h2>
+            <span className="text-xs sm:text-sm text-bionic-text-dim truncate ml-2">Based on: {feed?.curated_by || "your interests"}</span>
+          </div>
+          <div className="space-y-2 sm:space-y-3">
+            {feed?.posts.slice(0, 3).map((post) => (
+              <div key={post.id} onClick={() => handleOpenPost(post)} className="glass-button p-3 sm:p-4 rounded-xl card-hover cursor-pointer relative group">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  {post.author_avatar_url ? (
+                    <img src={buildImageUrl(post.author_avatar_url)} alt="" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-xs sm:text-sm font-bold flex-shrink-0">{post.author_username?.[0]?.toUpperCase() || "?"}</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                      <span className="text-xs sm:text-sm font-medium truncate">@{post.author_username}</span>
+                      {post.author_impact_score != null && (
+                        <span className="text-sm sm:text-lg flex-shrink-0" title={`${getTierInfo(post.author_impact_score).name}`}>{getTierInfo(post.author_impact_score).icon}</span>
+                      )}
+                      <span className="text-xs text-bionic-text-dim flex-shrink-0">{formatRelativeTime(post.created_at)}</span>
+                    </div>
+                    <p className="text-sm sm:text-base text-bionic-text line-clamp-2">{post.content}</p>
+                    {post.image_url && (
+                      <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                        <img src={buildImageUrl(post.image_url)} alt="" className="w-full max-h-40 sm:max-h-32 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs sm:text-sm text-bionic-text-dim flex items-center gap-1"><Zap className="w-3 h-3 text-violet-400" />{post.impact_count}</span>
+                      {post.is_impacted_by_me && <span className="text-xs text-bionic-success">⚡ Impacted</span>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    {post.similarity_score != null && <span className={`${getSimilarityBadgeClass(post.similarity_score)} text-xs`}>{post.similarity_score.toFixed(0)}%</span>}
+                    {!post.is_impacted_by_me && (
+                      <button onClick={(e) => { e.stopPropagation(); handleOpenPost(post); }} className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full bg-violet-500/20 hover:bg-violet-500/30" title="Give Impact">
+                        <Zap className="w-3.5 h-3.5 text-violet-400" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
           <div className="space-y-3">
             {feed?.posts.slice(0, 3).map((post) => (
@@ -385,7 +435,7 @@ export default function HubPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {post.similarity_score !== undefined && <span className={getSimilarityBadgeClass(post.similarity_score)}>{post.similarity_score.toFixed(0)}%</span>}
+                    {post.similarity_score != null && <span className={getSimilarityBadgeClass(post.similarity_score)}>{post.similarity_score.toFixed(0)}%</span>}
                     {/* Quick Impact Button */}
                     {!post.is_impacted_by_me && (
                       <button
