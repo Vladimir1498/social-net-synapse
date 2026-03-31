@@ -48,11 +48,19 @@ Score generously for genuinely relevant content, but be strict about unrelated c
         response = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
             temperature=0.2,
             max_tokens=1000,
         )
-        result = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content or "{}"
+        import re
+        try:
+            result = json.loads(content)
+        except json.JSONDecodeError:
+            match = re.search(r'\{[^}]+\}', content)
+            if match:
+                result = json.loads(match.group())
+            else:
+                return {}
         scores = {}
         for item in result.get("scores", result.get("results", result.get("items", []))):
             if isinstance(item, dict) and "id" in item and "score" in item:
@@ -305,16 +313,17 @@ async def get_feed(
         candidates = [{"id": r[0].id, "content": r[0].content} for r in scored_rows]
         llm_scores = await _score_relevance_with_llm(goal, candidates)
 
-        # Combine: LLM score (70%) + keyword score (30%)
-        scored_rows.sort(
-            key=lambda x: (
-                llm_scores.get(x[0].id, 0.0) * 0.7 + (x[1] / 10.0) * 0.3,
-            ),
-            reverse=True,
-        )
+        if llm_scores:
+            # Combine: LLM score (70%) + keyword score (30%)
+            scored_rows.sort(
+                key=lambda x: (
+                    llm_scores.get(x[0].id, 0.0) * 0.7 + (x[1] / 10.0) * 0.3,
+                ),
+                reverse=True,
+            )
 
-        # Filter out posts with very low LLM relevance
-        scored_rows = [(r, s) for r, s in scored_rows if llm_scores.get(r.id, 0.0) >= 0.2]
+            # Filter out posts with very low LLM relevance (only if LLM returned scores)
+            scored_rows = [(r, s) for r, s in scored_rows if llm_scores.get(r.id, 0.0) >= 0.2]
 
     # Take final limit
     scored_rows = scored_rows[:limit]
