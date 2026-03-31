@@ -36,67 +36,88 @@ async def get_feed(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Get AI-curated feed based on semantic similarity to user's goal.
+    """Get AI-curated feed based on user's goal.
 
-    Returns top posts based on the highest semantic similarity
-    to the user's current goal.
-
-    Args:
-        limit: Maximum number of posts.
-        offset: Pagination offset.
-        current_user: Authenticated user.
-        session: Database session.
-
-    Returns:
-        Curated feed of posts.
+    Matching strategy (combined):
+    1. Vector similarity between user goal and post content (primary)
+    2. Keyword overlap between goal words and post content (secondary)
+    3. Author impact score (tiebreaker)
+    4. Recency (fallback)
     """
-    # Check if user has bio_vector set (handle numpy array)
-    if current_user.bio_vector is None or (
+    goal = (current_user.current_goal or "").strip()
+    has_vector = current_user.bio_vector is not None and not (
         hasattr(current_user.bio_vector, "__len__") and len(current_user.bio_vector) == 0
-    ):
-        # Return empty feed if user has no goal set
+    )
+
+    if not goal and not has_vector:
         return {
             "posts": [],
             "total_count": 0,
             "curated_by": "Set your goal to get personalized feed",
         }
 
-    # Convert vector to string format for PostgreSQL
-    vector_str = "[" + ",".join(str(v) for v in current_user.bio_vector) + "]"
+    # Extract keywords from goal for text matching
+    stop_words = {"i", "want", "to", "my", "the", "a", "an", "and", "or", "is", "are", "be", "in", "on", "at", "for", "of", "with", "by", "from", "it", "that", "this", "as", "was", "were", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "can", "may", "might", "not", "but", "so", "if", "then", "than", "very", "just", "about", "up", "out", "all", "some", "any", "each", "every", "no", "more", "most", "other", "into", "through", "during", "before", "after", "above", "below", "between", "same", "too", "own", "such", "only", "over", "also"}
+    keywords = [w.lower() for w in goal.split() if len(w) > 2 and w.lower() not in stop_words]
 
-    # Query posts with vector similarity and impact boost
-    # Final score = (semantic_similarity * 0.8) + (impact_count_normalized * 0.2)
-    # We use distance for ordering (lower is better), so we invert the formula
-    # Also exclude user's own posts
+    # Build keyword ILIKE conditions
+    keyword_conditions = []
+    for kw in keywords:
+        keyword_conditions.append(f"p.content ILIKE '%{kw}%'")
+
+    keyword_sql = " OR ".join(keyword_conditions) if keyword_conditions else "FALSE"
+
+    # Build vector comparison if available
+    if has_vector:
+        vector_str = "[" + ",".join(str(v) for v in current_user.bio_vector) + "]"
+        vector_similarity = f"(1 - (p.content_vector <=> '{vector_str}'::vector))"
+        vector_order = f"p.content_vector <=> '{vector_str}'::vector"
+    else:
+        vector_similarity = "0"
+        vector_order = "1"
+
+    # Keyword match score: count of matched keywords / total keywords
+    if keywords:
+        keyword_score_parts = [f"CASE WHEN p.content ILIKE '%{kw}%' THEN 1 ELSE 0 END" for kw in keywords]
+        keyword_score = f"({' + '.join(keyword_score_parts)}::float / {len(keywords)})"
+    else:
+        keyword_score = "0"
+
     query = text(
         f"""
-        SELECT 
-            p.id, 
-            p.author_id, 
-            p.content, 
+        SELECT
+            p.id,
+            p.author_id,
+            p.content,
             p.image_url,
-            p.impact_count, 
+            p.impact_count,
             p.created_at,
-            p.content_vector <=> '{vector_str}'::vector as distance,
+            {vector_similarity} as vector_sim,
+            {keyword_score} as keyword_sim,
             u.username as author_username,
             u.avatar_url as author_avatar_url,
             u.impact_score as author_impact_score,
             u.is_focusing as author_is_focusing,
             u.current_focus_goal as author_focus_goal,
             EXISTS(
-                SELECT 1 FROM interactions i 
-                WHERE i.from_user_id = :user_id 
-                AND i.to_user_id = p.author_id 
+                SELECT 1 FROM interactions i
+                WHERE i.from_user_id = :user_id
+                AND i.to_user_id = p.author_id
                 AND i.type = 'impact'
             ) as is_impacted_by_me,
             (
-                (1 - (p.content_vector <=> '{vector_str}'::vector)) * 0.7 +
-                LEAST(u.impact_score::float / 200.0, 1.0) * 0.3
+                {vector_similarity} * 0.4 +
+                {keyword_score} * 0.3 +
+                LEAST(u.impact_score::float / 200.0, 1.0) * 0.15 +
+                EXP(-EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 86400.0) * 0.15
             ) as final_score
         FROM posts p
         JOIN users u ON p.author_id = u.id
-        WHERE p.content_vector IS NOT NULL
-        AND p.author_id != :user_id
+        WHERE p.author_id != :user_id
+        AND (
+            p.content_vector IS NOT NULL
+            {"OR (" + keyword_sql + ")" if keywords else ""}
+        )
         ORDER BY final_score DESC
         LIMIT :limit OFFSET :offset
         """
@@ -109,7 +130,7 @@ async def get_feed(
 
     posts = []
     for row in result:
-        similarity = round((1 - row.distance) * 100, 2)
+        similarity = round(float(row.vector_sim or 0) * 100, 2)
 
         posts.append(
             PostResponse(
@@ -132,7 +153,7 @@ async def get_feed(
     return {
         "posts": posts,
         "total_count": len(posts),
-        "curated_by": current_user.current_goal or "Your interests",
+        "curated_by": goal or "Your interests",
     }
 
 
@@ -408,7 +429,7 @@ async def get_suggested_posts(
     """
     from app.models import Interaction
     from datetime import datetime, timedelta
-    
+
     # Get recently interacted post IDs
     recent_query = select(Interaction.post_id).where(
         Interaction.from_user_id == current_user.id
@@ -417,48 +438,49 @@ async def get_suggested_posts(
     )
     recent_result = await session.execute(recent_query)
     interacted_ids = [r[0] for r in recent_result.fetchall()]
-    
+
     # Parse excluded post IDs
     if exclude_post_ids:
         excluded = [pid.strip() for pid in exclude_post_ids.split(",") if pid.strip()]
         interacted_ids.extend(excluded)
-    
-    # Get posts similar to user's goal but excluding interacted ones
-    if current_user.bio_vector is None or (
+
+    goal = (current_user.current_goal or "").strip()
+    has_vector = current_user.bio_vector is not None and not (
         hasattr(current_user.bio_vector, "__len__") and len(current_user.bio_vector) == 0
-    ):
-        # Return recent posts if no goal set
-        query = (
-            select(Post)
-            .where(Post.author_id != current_user.id)
-            .order_by(Post.created_at.desc())
-            .limit(limit)
-        )
-        if interacted_ids:
-            query = query.where(Post.id.not_in(interacted_ids))
-        result = await session.execute(query)
-        posts = result.scalars().all()
-        return {
-            "posts": [_serialize_post(p, p.author) for p in posts],
-            "total_count": len(posts),
-            "curated_by": "Recent posts",
-        }
-    
-    # Convert vector to string format
-    vector_str = "[" + ",".join(str(v) for v in current_user.bio_vector) + "]"
-    
+    )
+
+    # Extract keywords from goal
+    stop_words = {"i", "want", "to", "my", "the", "a", "an", "and", "or", "is", "are", "be", "in", "on", "at", "for", "of", "with", "by", "from", "it", "that", "this", "as", "was", "were", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "can", "may", "might", "not", "but", "so", "if", "then", "than", "very", "just", "about", "up", "out", "all", "some", "any", "each", "every", "no", "more", "most", "other", "into", "through", "during", "before", "after", "above", "below", "between", "same", "too", "own", "such", "only", "over", "also"}
+    keywords = [w.lower() for w in goal.split() if len(w) > 2 and w.lower() not in stop_words]
+
     # Build exclude clause
     exclude_clause = ""
     if interacted_ids:
         placeholders = ",".join([f"'{pid}'" for pid in interacted_ids])
         exclude_clause = f"AND p.id NOT IN ({placeholders})"
-    
+
+    # Build vector comparison
+    if has_vector:
+        vector_str = "[" + ",".join(str(v) for v in current_user.bio_vector) + "]"
+        vector_similarity = f"(1 - (p.content_vector <=> '{vector_str}'::vector))"
+    else:
+        vector_similarity = "0"
+
+    # Build keyword score
+    if keywords:
+        keyword_score_parts = [f"CASE WHEN p.content ILIKE '%{kw}%' THEN 1 ELSE 0 END" for kw in keywords]
+        keyword_score = f"({' + '.join(keyword_score_parts)}::float / {len(keywords)})"
+        keyword_where = " OR ".join([f"p.content ILIKE '%{kw}%'" for kw in keywords])
+    else:
+        keyword_score = "0"
+        keyword_where = "FALSE"
+
     query = text(
         f"""
-        SELECT 
-            p.id, 
-            p.author_id, 
-            p.content, 
+        SELECT
+            p.id,
+            p.author_id,
+            p.content,
             p.image_url,
             p.impact_count,
             p.created_at,
@@ -466,10 +488,11 @@ async def get_suggested_posts(
             u.avatar_url,
             u.current_goal,
             u.is_focusing,
-            1 - (p.content_vector <=> '{vector_str}') as similarity
+            ({vector_similarity} * 0.5 + {keyword_score} * 0.5) as similarity
         FROM posts p
         JOIN users u ON p.author_id = u.id
         WHERE p.author_id != '{current_user.id}'
+        AND (p.content_vector IS NOT NULL OR ({keyword_where}))
         {exclude_clause}
         ORDER BY similarity DESC, p.impact_count DESC
         LIMIT {limit} OFFSET {offset}
@@ -477,7 +500,7 @@ async def get_suggested_posts(
     )
     result = await session.execute(query)
     rows = result.fetchall()
-    
+
     posts = []
     for row in rows:
         post = Post(
@@ -496,11 +519,11 @@ async def get_suggested_posts(
             is_focusing=row[9],
         )
         posts.append(post)
-    
+
     return {
         "posts": [_serialize_post(p, p.author) for p in posts],
         "total_count": len(posts),
-        "curated_by": "Suggested for you",
+        "curated_by": goal or "Suggested for you",
     }
 
 
