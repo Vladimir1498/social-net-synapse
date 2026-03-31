@@ -74,14 +74,24 @@ Respond with JSON format: {"is_constructive": boolean, "reason": "brief explanat
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Analyze this feedback: {feedback}"},
                 ],
-                response_format={"type": "json_object"},
                 temperature=0.3,
             )
 
             import json
 
-            result = json.loads(response.choices[0].message.content)
-            return result["is_constructive"], result["reason"]
+            content = response.choices[0].message.content or ""
+            # Try to parse JSON from response
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks
+                import re
+                match = re.search(r'\{[^}]+\}', content)
+                if match:
+                    result = json.loads(match.group())
+                else:
+                    return False, "Could not parse LLM response"
+            return result.get("is_constructive", False), result.get("reason", "")
 
         except Exception as e:
             # Default to not constructive on error
@@ -89,69 +99,49 @@ Respond with JSON format: {"is_constructive": boolean, "reason": "brief explanat
 
 
 class RuleBasedFeedbackAnalyzer(FeedbackAnalyzer):
-    """Simple rule-based feedback analyzer for local use."""
+    """Rule-based feedback analyzer supporting English and Russian."""
 
-    # Keywords that indicate constructive feedback
     CONSTRUCTIVE_KEYWORDS = [
-        "suggest",
-        "improve",
-        "because",
-        "consider",
-        "would be better",
-        "could",
-        "should",
-        "recommend",
-        "specifically",
-        "example",
-        "however",
-        "alternatively",
-        "instead",
-        "try",
-        "next time",
+        # English
+        "suggest", "improve", "because", "consider", "would be better",
+        "could", "should", "recommend", "specifically", "example",
+        "however", "alternatively", "instead", "try", "next time",
+        "helped me", "learned", "taught me", "useful", "insightful",
+        "clear explanation", "well explained", "good example",
+        # Russian
+        "помогло", "помог", "понять", "научил", "полезно", "полезный",
+        "понравилось", "интересно", "хорошо объяснил", "ясно",
+        "узнал", "научился", "разобрался", "рекомендую",
+        "стоит попробовать", "можно улучшить", "советую",
+        "подробно", "подробное", "глубоко", "подход",
+        "объясняет", "объяснение", "понятно", "разжевал",
     ]
 
-    # Keywords that indicate non-constructive feedback
     NON_CONSTRUCTIVE_PATTERNS = [
-        "good job",
-        "nice work",
-        "great",
-        "awesome",
-        "cool",
-        "ok",
-        "fine",
-        "bad",
-        "terrible",
-        "sucks",
+        # English
+        "good job", "nice work", "great", "awesome", "cool", "ok", "fine",
+        "bad", "terrible", "sucks",
+        # Russian
+        "круто", "норм", "окей", "плохо", "ужасно", "отстой",
+        "фигня", "мусор", "супер", "класс",
     ]
 
     async def analyze(self, feedback: str) -> tuple[bool, str]:
-        """Analyze feedback using simple rules.
-
-        Args:
-            feedback: The feedback text to analyze.
-
-        Returns:
-            Tuple of (is_constructive, reason).
-        """
         feedback_lower = feedback.lower().strip()
 
-        # Check minimum length
         if len(feedback_lower) < 20:
             return False, "Feedback is too short to be constructive"
 
-        # Check for constructive keywords
         constructive_count = sum(
             1 for keyword in self.CONSTRUCTIVE_KEYWORDS
             if keyword in feedback_lower
         )
 
-        # Check for non-constructive patterns
         non_constructive_count = sum(
             1 for pattern in self.NON_CONSTRUCTIVE_PATTERNS
             if pattern in feedback_lower
         )
 
-        # Decision logic
         if constructive_count >= 2:
             return True, "Feedback contains constructive suggestions"
         elif constructive_count >= 1 and non_constructive_count == 0:
@@ -159,9 +149,8 @@ class RuleBasedFeedbackAnalyzer(FeedbackAnalyzer):
         elif non_constructive_count > constructive_count:
             return False, "Feedback appears to be generic praise or criticism"
         else:
-            # Neutral case - check for specificity
             words = feedback_lower.split()
-            if len(words) >= 15:
+            if len(words) >= 10:
                 return True, "Feedback is detailed enough to be constructive"
             return False, "Feedback lacks specific actionable suggestions"
 
