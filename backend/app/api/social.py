@@ -22,7 +22,7 @@ async def heartbeat(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Update user's last_seen to mark them as online."""
-    current_user.last_seen = datetime.now(timezone.utc)
+    current_user.last_seen = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(current_user)
     await session.flush()
     return {"status": "ok", "last_seen": current_user.last_seen.isoformat()}
@@ -38,10 +38,8 @@ async def get_online_status(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     last_seen = user.last_seen
-    if last_seen is not None and last_seen.tzinfo is None:
-        last_seen = last_seen.replace(tzinfo=timezone.utc)
     is_online = last_seen is not None and (now - last_seen) < timedelta(minutes=2)
     return {
         "user_id": user_id,
@@ -203,7 +201,7 @@ async def get_conversations(
     user_ids_result = await session.execute(sent.union(received))
     user_ids = [r[0] for r in user_ids_result.fetchall()]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     conversations = []
     for uid in user_ids:
         user = (await session.execute(select(User).where(User.id == uid))).scalar_one_or_none()
