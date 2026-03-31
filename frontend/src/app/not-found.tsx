@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const ChatClient = dynamic(() => import("./chat/[userId]/ChatClient"), { ssr: false });
 const ProfileClient = dynamic(() => import("./profile/[profileId]/ProfileClient"), { ssr: false });
 
-export default function NotFound() {
+function NotFoundContent() {
   const pathname = usePathname();
 
   const chatMatch = pathname.match(/^\/chat\/(.+)$/);
@@ -29,5 +30,17 @@ export default function NotFound() {
         </a>
       </div>
     </div>
+  );
+}
+
+export default function NotFound() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-bionic-text-dim">Loading...</div>
+      </div>
+    }>
+      <NotFoundContent />
+    </Suspense>
   );
 }

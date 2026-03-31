@@ -57,8 +57,9 @@ async def get_feed(
         }
 
     # Extract keywords from goal for text matching
+    # Only use keywords that are 3+ ASCII chars (skip Russian/non-Latin words)
     stop_words = {"i", "want", "to", "my", "the", "a", "an", "and", "or", "is", "are", "be", "in", "on", "at", "for", "of", "with", "by", "from", "it", "that", "this", "as", "was", "were", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "can", "may", "might", "not", "but", "so", "if", "then", "than", "very", "just", "about", "up", "out", "all", "some", "any", "each", "every", "no", "more", "most", "other", "into", "through", "during", "before", "after", "above", "below", "between", "same", "too", "own", "such", "only", "over", "also"}
-    keywords = [w.lower() for w in goal.split() if len(w) > 2 and w.lower() not in stop_words]
+    keywords = [w.lower() for w in goal.split() if len(w) >= 3 and w.isascii() and w.lower() not in stop_words]
 
     # Build keyword ILIKE conditions
     keyword_conditions = []
@@ -115,7 +116,7 @@ async def get_feed(
         JOIN users u ON p.author_id = u.id
         WHERE p.author_id != :user_id
         AND (
-            p.content_vector IS NOT NULL
+            (p.content_vector IS NOT NULL AND {vector_similarity} > 0.25)
             {"OR (" + keyword_sql + ")" if keywords else ""}
         )
         ORDER BY final_score DESC
@@ -397,7 +398,7 @@ async def impact_post(
         impact_points=impact_points,
     )
     session.add(interaction)
-    await session.flush()
+    await session.commit()
 
     return {
         "message": "Impact applied" if is_constructive else "Feedback not constructive",

@@ -445,9 +445,20 @@ async def get_connection_status(
     pending_result = await session.execute(pending_incoming)
     has_pending_incoming = pending_result.scalar_one_or_none() is not None
 
+    # Check if I already sent a pending request to them
+    pending_outgoing = select(Interaction).where(
+        Interaction.from_user_id == current_user.id,
+        Interaction.to_user_id == user_id,
+        Interaction.type == "connect",
+        Interaction.is_read == False,
+    )
+    pending_out_result = await session.execute(pending_outgoing)
+    has_pending_outgoing = pending_out_result.scalar_one_or_none() is not None
+
     return {
         "is_connected": has_outgoing and has_incoming,
         "is_pending": has_pending_incoming,
+        "is_pending_outgoing": has_pending_outgoing,
     }
 
 
