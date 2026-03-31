@@ -1,15 +1,65 @@
 """Feed API routes for AI-curated content."""
 
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.config import get_settings
 from app.database import get_session
 from app.models import Post, User
 from app.schemas import FeedResponse, PostCreate, PostResponse
 
+settings = get_settings()
+
 router = APIRouter(prefix="/feed", tags=["Feed"])
+
+
+async def _score_relevance_with_llm(goal: str, posts: list[dict]) -> dict[str, float]:
+    """Use LLM to score each post's relevance to the user's goal.
+
+    Returns dict of {post_id: relevance_score} where score is 0.0-1.0.
+    """
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+    posts_text = "\n".join(
+        f"[{i}] ID={p['id']}: {p['content'][:300]}"
+        for i, p in enumerate(posts)
+    )
+
+    prompt = f"""User's goal: "{goal}"
+
+Posts to evaluate:
+{posts_text}
+
+For each post, rate its relevance to the user's goal on a scale of 0.0 to 1.0.
+- 1.0 = directly about the goal topic
+- 0.5 = somewhat related
+- 0.0 = completely unrelated
+
+Respond with ONLY a JSON array of objects: [{{"id": "POST_ID", "score": 0.0-1.0}}, ...]
+Score generously for genuinely relevant content, but be strict about unrelated content."""
+
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+            max_tokens=1000,
+        )
+        result = json.loads(response.choices[0].message.content)
+        scores = {}
+        for item in result.get("scores", result.get("results", result.get("items", []))):
+            if isinstance(item, dict) and "id" in item and "score" in item:
+                scores[item["id"]] = float(item["score"])
+        return scores
+    except Exception:
+        return {}
 
 
 def _serialize_post(post: Post, author: User) -> PostResponse:
@@ -38,11 +88,10 @@ async def get_feed(
 ) -> dict:
     """Get AI-curated feed based on user's goal.
 
-    Matching strategy (combined):
-    1. Vector similarity between user goal and post content (primary)
-    2. Keyword overlap between goal words and post content (secondary)
-    3. Author impact score (tiebreaker)
-    4. Recency (fallback)
+    Strategy:
+    1. Fetch candidate posts using vector similarity + keyword matching
+    2. If OpenAI is available, use LLM to score relevance to goal
+    3. Return posts sorted by LLM relevance (or vector score as fallback)
     """
     goal = (current_user.current_goal or "").strip()
     has_vector = current_user.bio_vector is not None and not (
@@ -56,33 +105,33 @@ async def get_feed(
             "curated_by": "Set your goal to get personalized feed",
         }
 
+    # Fetch more candidates than needed for LLM re-ranking
+    fetch_limit = limit * 3 if settings.openai_api_key else limit
+
     # Extract keywords from goal for text matching
-    # Only use keywords that are 3+ ASCII chars (skip Russian/non-Latin words)
     stop_words = {"i", "want", "to", "my", "the", "a", "an", "and", "or", "is", "are", "be", "in", "on", "at", "for", "of", "with", "by", "from", "it", "that", "this", "as", "was", "were", "been", "have", "has", "had", "do", "does", "did", "will", "would", "could", "should", "can", "may", "might", "not", "but", "so", "if", "then", "than", "very", "just", "about", "up", "out", "all", "some", "any", "each", "every", "no", "more", "most", "other", "into", "through", "during", "before", "after", "above", "below", "between", "same", "too", "own", "such", "only", "over", "also"}
     keywords = [w.lower() for w in goal.split() if len(w) >= 3 and w.isascii() and w.lower() not in stop_words]
 
     # Build keyword ILIKE conditions
-    keyword_conditions = []
-    for kw in keywords:
-        keyword_conditions.append(f"p.content ILIKE '%{kw}%'")
-
+    keyword_conditions = [f"p.content ILIKE '%{kw}%'" for kw in keywords]
     keyword_sql = " OR ".join(keyword_conditions) if keyword_conditions else "FALSE"
 
     # Build vector comparison if available
     if has_vector:
         vector_str = "[" + ",".join(str(v) for v in current_user.bio_vector) + "]"
         vector_similarity = f"(1 - (p.content_vector <=> '{vector_str}'::vector))"
-        vector_order = f"p.content_vector <=> '{vector_str}'::vector"
     else:
         vector_similarity = "0"
-        vector_order = "1"
 
-    # Keyword match score: count of matched keywords / total keywords
+    # Keyword match score
     if keywords:
         keyword_score_parts = [f"CASE WHEN p.content ILIKE '%{kw}%' THEN 1 ELSE 0 END" for kw in keywords]
         keyword_score = f"({' + '.join(keyword_score_parts)}::float / {len(keywords)})"
     else:
         keyword_score = "0"
+
+    # Minimum vector similarity threshold (higher = stricter)
+    min_vector_sim = 0.4
 
     query = text(
         f"""
@@ -105,32 +154,51 @@ async def get_feed(
                 WHERE i.from_user_id = :user_id
                 AND i.to_user_id = p.author_id
                 AND i.type = 'impact'
-            ) as is_impacted_by_me,
-            (
-                {vector_similarity} * 0.4 +
-                {keyword_score} * 0.3 +
-                LEAST(u.impact_score::float / 200.0, 1.0) * 0.15 +
-                EXP(-EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 86400.0) * 0.15
-            ) as final_score
+            ) as is_impacted_by_me
         FROM posts p
         JOIN users u ON p.author_id = u.id
         WHERE p.author_id != :user_id
         AND (
-            (p.content_vector IS NOT NULL AND {vector_similarity} > 0.25)
+            (p.content_vector IS NOT NULL AND {vector_similarity} > {min_vector_sim})
             {"OR (" + keyword_sql + ")" if keywords else ""}
         )
-        ORDER BY final_score DESC
+        ORDER BY {vector_similarity} DESC, p.created_at DESC
         LIMIT :limit OFFSET :offset
         """
     )
 
     result = await session.execute(
         query,
-        {"limit": limit, "offset": offset, "user_id": current_user.id},
+        {"limit": fetch_limit, "offset": offset, "user_id": current_user.id},
     )
 
-    posts = []
+    # Collect raw rows
+    rows = []
     for row in result:
+        rows.append(row)
+
+    # If OpenAI is available, use LLM to re-rank candidates
+    if settings.openai_api_key and rows and goal:
+        candidates = [{"id": row.id, "content": row.content} for row in rows]
+        llm_scores = await _score_relevance_with_llm(goal, candidates)
+
+        # Sort by LLM score descending, then by vector similarity
+        rows.sort(
+            key=lambda r: (
+                llm_scores.get(r.id, 0.0),
+                float(r.vector_sim or 0),
+            ),
+            reverse=True,
+        )
+
+        # Filter out posts with very low LLM relevance (< 0.2)
+        rows = [r for r in rows if llm_scores.get(r.id, 0.0) >= 0.2]
+
+        # Take only requested limit
+        rows = rows[:limit]
+
+    posts = []
+    for row in rows:
         similarity = round(float(row.vector_sim or 0) * 100, 2)
 
         posts.append(
