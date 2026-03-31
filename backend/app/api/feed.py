@@ -575,6 +575,7 @@ async def get_my_posts(
             id=post.id,
             author_id=post.author_id,
             author_username=current_user.username,
+            author_avatar_url=current_user.avatar_url,
             author_impact_score=current_user.impact_score,
             author_is_focusing=current_user.is_focusing,
             author_focus_goal=current_user.current_focus_goal,
@@ -585,3 +586,47 @@ async def get_my_posts(
         )
         for post in posts
     ]
+
+
+@router.get("/posts/user/{user_id}", response_model=FeedResponse)
+async def get_user_posts(
+    user_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Get posts by a specific user."""
+    user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    query = (
+        select(Post)
+        .where(Post.author_id == user_id)
+        .order_by(Post.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(query)
+    posts = result.scalars().all()
+
+    return {
+        "posts": [
+            PostResponse(
+                id=post.id,
+                author_id=post.author_id,
+                author_username=user.username,
+                author_avatar_url=user.avatar_url,
+                author_impact_score=user.impact_score,
+                author_is_focusing=user.is_focusing,
+                author_focus_goal=user.current_focus_goal,
+                content=post.content,
+                image_url=post.image_url,
+                impact_count=post.impact_count,
+                created_at=post.created_at,
+            )
+            for post in posts
+        ],
+        "total_count": len(posts),
+        "curated_by": f"Posts by @{user.username}",
+    }

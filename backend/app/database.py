@@ -53,6 +53,16 @@ async def init_db() -> None:
             "ALTER TABLE interactions ADD COLUMN IF NOT EXISTS post_id VARCHAR",
             "ALTER TABLE interactions ADD COLUMN IF NOT EXISTS impact_points INTEGER DEFAULT 0",
             "CREATE INDEX IF NOT EXISTS ix_interactions_post_id ON interactions (post_id)",
+            "CREATE TABLE IF NOT EXISTS saved_posts (id VARCHAR PRIMARY KEY, user_id VARCHAR, post_id VARCHAR, created_at TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS comments (id VARCHAR PRIMARY KEY, post_id VARCHAR, author_id VARCHAR, content TEXT, created_at TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS messages (id VARCHAR PRIMARY KEY, from_user_id VARCHAR, to_user_id VARCHAR, content TEXT, is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS ix_saved_posts_user_id ON saved_posts (user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_saved_posts_post_id ON saved_posts (post_id)",
+            "CREATE INDEX IF NOT EXISTS ix_comments_post_id ON comments (post_id)",
+            "CREATE INDEX IF NOT EXISTS ix_comments_author_id ON comments (author_id)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_from_user_id ON messages (from_user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_to_user_id ON messages (to_user_id)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_created_at ON messages (created_at)",
         ]
         for migration in migrations:
             try:

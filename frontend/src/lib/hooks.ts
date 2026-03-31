@@ -450,3 +450,145 @@ export function useUpdateProfile() {
     },
   });
 }
+
+// Comments
+export function useComments(postId: string) {
+  return useQuery<{ id: string; post_id: string; author_id: string; author_username: string; author_avatar_url: string | null; content: string; created_at: string }[]>({
+    queryKey: ["comments", postId],
+    queryFn: async () => {
+      const { data } = await api.get(`/social/posts/${postId}/comments`);
+      return data;
+    },
+    enabled: !!postId,
+  });
+}
+
+export function useCreateComment() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { postId: string; content: string }>({
+    mutationFn: async ({ postId, content }) => {
+      await api.post(`/social/posts/${postId}/comments`, null, { params: { content } });
+    },
+    onSuccess: (_, { postId }) => {
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+    },
+  });
+}
+
+// Messages
+export function useConversations() {
+  return useQuery<{ user_id: string; username: string; avatar_url: string | null; last_message: string; last_message_at: string | null; unread_count: number }[]>({
+    queryKey: ["conversations"],
+    queryFn: async () => {
+      const { data } = await api.get("/social/conversations");
+      return data;
+    },
+  });
+}
+
+export function useMessages(userId: string | null) {
+  return useQuery<{ id: string; from_user_id: string; to_user_id: string; content: string; is_read: boolean; created_at: string }[]>({
+    queryKey: ["messages", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/social/messages/${userId}`);
+      return data;
+    },
+    enabled: !!userId,
+    refetchInterval: 5000,
+  });
+}
+
+export function useSendMessage() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { userId: string; content: string }>({
+    mutationFn: async ({ userId, content }) => {
+      await api.post(`/social/messages/${userId}`, null, { params: { content } });
+    },
+    onSuccess: (_, { userId }) => {
+      queryClient.invalidateQueries({ queryKey: ["messages", userId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
+// Search
+export function useSearch(q: string, type: "all" | "users" | "posts" = "all") {
+  return useQuery<{ users: { id: string; username: string; avatar_url: string | null; bio: string | null; current_goal: string | null; impact_score: number }[]; posts: { id: string; author_id: string; author_username: string; author_avatar_url: string | null; content: string; image_url: string | null; impact_count: number; created_at: string }[] }>({
+    queryKey: ["search", q, type],
+    queryFn: async () => {
+      const { data } = await api.get("/social/search", { params: { q, type } });
+      return data;
+    },
+    enabled: q.length >= 2,
+  });
+}
+
+// Leaderboard
+export function useLeaderboard(limit = 20) {
+  return useQuery<{ rank: number; id: string; username: string; avatar_url: string | null; current_goal: string | null; impact_score: number; is_focusing: boolean }[]>({
+    queryKey: ["leaderboard", limit],
+    queryFn: async () => {
+      const { data } = await api.get("/social/leaderboard", { params: { limit } });
+      return data;
+    },
+  });
+}
+
+// Saved Posts
+export function useSavedPosts() {
+  return useQuery<{ id: string; author_id: string; author_username: string; author_avatar_url: string | null; content: string; image_url: string | null; impact_count: number; created_at: string }[]>({
+    queryKey: ["savedPosts"],
+    queryFn: async () => {
+      const { data } = await api.get("/social/saved");
+      return data;
+    },
+  });
+}
+
+export function useSavePost() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (postId) => {
+      await api.post(`/social/saved/${postId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+    },
+  });
+}
+
+export function useUnsavePost() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (postId) => {
+      await api.delete(`/social/saved/${postId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+    },
+  });
+}
+
+// Public user profile
+export function usePublicProfile(userId: string | null) {
+  return useQuery<{ id: string; username: string; bio: string | null; avatar_url: string | null; current_goal: string | null; impact_score: number; is_focusing: boolean; current_focus_goal: string | null; created_at: string; posts_count: number }>({
+    queryKey: ["publicProfile", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/users/${userId}`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+
+// User posts
+export function useUserPosts(userId: string | null) {
+  return useQuery<{ posts: { id: string; author_id: string; author_username: string; author_avatar_url: string | null; content: string; image_url: string | null; impact_count: number; created_at: string }[] }>({
+    queryKey: ["userPosts", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/feed/posts/user/${userId}`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+}

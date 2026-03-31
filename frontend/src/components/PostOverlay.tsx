@@ -1,12 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, User } from "lucide-react";
+import { X, Zap, User, Bookmark, MessageSquare, Send } from "lucide-react";
 import { Post } from "@/lib/types";
-import { getTierInfo } from "@/lib/utils";
+import { getTierInfo, formatRelativeTime } from "@/lib/utils";
 import { useState } from "react";
 import confetti from "canvas-confetti";
-import { useSaveToKnowledge } from "@/lib/hooks";
+import { useSaveToKnowledge, useComments, useCreateComment, useSavePost, useUnsavePost } from "@/lib/hooks";
 
 interface PostOverlayProps {
   post: Post | null;
@@ -26,6 +26,11 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
   const [saveToKnowledge, setSaveToKnowledge] = useState(false);
 
   const saveKnowledgeMutation = useSaveToKnowledge();
+  const savePost = useSavePost();
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const { data: comments } = useComments(post?.id || "");
+  const createComment = useCreateComment();
 
   const quickTags = ["Clear", "Helpful", "Innovative", "Inspiring", "Actionable"];
 
@@ -155,13 +160,62 @@ export function PostOverlay({ post, isOpen, onClose, onImpact, onImpactSuccess }
               <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-6 pt-6 border-t border-white/10">
                 {post.similarity_score !== undefined && <div className="px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-sm">{post.similarity_score.toFixed(1)}% similar</div>}
                 <div className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-400 text-sm">{post.impact_count} impacts</div>
-                {post.author_is_focusing && (
-                  <div className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-sm flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                    In Focus
-                  </div>
-                )}
+                <button onClick={() => setShowComments(!showComments)} className="px-3 py-1 rounded-full bg-white/5 text-zinc-400 text-sm flex items-center gap-1 hover:bg-white/10 transition-colors">
+                  <MessageSquare className="w-3 h-3" />
+                  {comments?.length || 0}
+                </button>
+                <button onClick={() => savePost.mutate(post.id)} className="px-3 py-1 rounded-full bg-white/5 text-zinc-400 text-sm flex items-center gap-1 hover:bg-white/10 transition-colors">
+                  <Bookmark className="w-3 h-3" />
+                  Save
+                </button>
               </div>
+
+              {/* Comments Section */}
+              {showComments && (
+                <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && commentText.trim()) {
+                          createComment.mutate({ postId: post.id, content: commentText.trim() });
+                          setCommentText("");
+                        }
+                      }}
+                      placeholder="Write a comment..."
+                      className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+                    />
+                    <button
+                      onClick={() => {
+                        if (commentText.trim()) {
+                          createComment.mutate({ postId: post.id, content: commentText.trim() });
+                          setCommentText("");
+                        }
+                      }}
+                      disabled={!commentText.trim()}
+                      className="p-2 rounded-xl bg-violet-500/20 text-violet-400 disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {comments?.map((c) => (
+                    <div key={c.id} className="flex gap-2">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {c.author_username[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-white">{c.author_username}</span>
+                          <span className="text-[10px] text-zinc-500">{formatRelativeTime(c.created_at)}</span>
+                        </div>
+                        <p className="text-sm text-zinc-300 break-words">{c.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {comments?.length === 0 && <p className="text-xs text-zinc-500 text-center py-2">No comments yet</p>}
+                </div>
+              )}
             </div>
 
             {/* Impact Section - Sticky at bottom */}

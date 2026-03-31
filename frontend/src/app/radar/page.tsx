@@ -10,15 +10,14 @@ import { useUser, useMatches, useUpdateLocation, useGiveImpact, useConnect, useC
 import { getSimilarityBadgeClass, getTierInfo } from "@/lib/utils";
 import { MatchResult } from "@/lib/types";
 
-// Connection Button Component
 function ConnectionButton({ userId, onConnect, isPending }: { userId: string; onConnect: () => void; isPending: boolean }) {
+  const router = useRouter();
   const { data: connectionStatus } = useConnectionStatus(userId);
   const is_connected = connectionStatus?.is_connected ?? false;
 
   const handleClick = () => {
     if (is_connected) {
-      // Show toast for coming soon
-      alert("Chat feature coming soon! 💬");
+      router.push(`/chat/${userId}`);
     } else {
       onConnect();
     }

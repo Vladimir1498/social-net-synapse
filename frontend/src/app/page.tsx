@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Target, Zap, Users, Clock, TrendingUp, Plus, X, Sparkles } from "lucide-react";
+import { Target, Zap, Users, Clock, TrendingUp, Plus, X, Sparkles, Bell } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { PostOverlay } from "@/components/PostOverlay";
-import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact, useFocusStreak, useLiveFocusing, useSuggestedPosts } from "@/lib/hooks";
+import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact, useFocusStreak, useLiveFocusing, useSuggestedPosts, useNotifications } from "@/lib/hooks";
 import { formatRelativeTime, getSimilarityBadgeClass, getTierInfo } from "@/lib/utils";
 import { Post } from "@/lib/types";
 import { api } from "@/lib/api";
@@ -21,6 +21,9 @@ export default function HubPage() {
   const syncGoal = useSyncGoal();
   const createPost = useCreatePost();
   const postImpact = usePostImpact();
+  const { data: notifications } = useNotifications(20, true);
+
+  const unreadCount = notifications?.filter((n) => !n.is_read).length || 0;
 
   const [goalInput, setGoalInput] = useState("");
   const [isEditingGoal, setIsEditingGoal] = useState(false);
@@ -142,11 +145,19 @@ export default function HubPage() {
             <h1 className="text-2xl font-bold text-bionic-text">
               Welcome back, <span className="text-bionic-accent">{user?.username || "Explorer"}</span>
             </h1>
+            <div className="flex items-center gap-2">
             {user?.impact_score !== undefined && (
               <span className="text-2xl" title={`${getTierInfo(user.impact_score).name} Tier`}>
                 {getTierInfo(user.impact_score).icon}
               </span>
             )}
+            <button onClick={() => router.push("/connections")} className="relative p-2 rounded-full hover:bg-white/10 transition-colors">
+              <Bell className="w-5 h-5 text-bionic-text-dim" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">{unreadCount}</span>
+              )}
+            </button>
+          </div>
           </div>
 
           {/* Focus Streak */}
@@ -290,7 +301,7 @@ export default function HubPage() {
             <h2 className="text-lg font-semibold">Quick Actions</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
+            <button onClick={() => router.push("/focus")} className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
               <div className="w-10 h-10 rounded-full bg-bionic-accent/20 flex items-center justify-center">
                 <Target className="w-5 h-5 text-bionic-accent" />
               </div>
@@ -300,7 +311,7 @@ export default function HubPage() {
               </div>
             </button>
 
-            <button className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
+            <button onClick={() => router.push("/radar")} className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
               <div className="w-10 h-10 rounded-full bg-bionic-success/20 flex items-center justify-center">
                 <Users className="w-5 h-5 text-bionic-success" />
               </div>

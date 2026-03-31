@@ -168,3 +168,54 @@ class FocusSession(SQLModel, table=True):
 
 # Create vector similarity index for users
 # Note: This is a placeholder - actual index creation happens in migrations
+
+
+class SavedPost(SQLModel, table=True):
+    """Saved/bookmarked posts (knowledge base)."""
+
+    __tablename__ = "saved_posts"
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+        unique=True,
+        index=True,
+    )
+    user_id: str = Field(foreign_key="users.id", index=True)
+    post_id: str = Field(foreign_key="posts.id", index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Comment(SQLModel, table=True):
+    """Comments on posts."""
+
+    __tablename__ = "comments"
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+        unique=True,
+        index=True,
+    )
+    post_id: str = Field(foreign_key="posts.id", index=True)
+    author_id: str = Field(foreign_key="users.id", index=True)
+    content: str = Field(sa_column=Column(Text))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Message(SQLModel, table=True):
+    """Direct messages between connected users."""
+
+    __tablename__ = "messages"
+
+    id: str = Field(
+        default_factory=lambda: str(uuid4()),
+        primary_key=True,
+        unique=True,
+        index=True,
+    )
+    from_user_id: str = Field(foreign_key="users.id", index=True)
+    to_user_id: str = Field(foreign_key="users.id", index=True)
+    content: str = Field(sa_column=Column(Text))
+    is_read: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
