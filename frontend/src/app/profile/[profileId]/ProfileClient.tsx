@@ -6,10 +6,10 @@ import { usePublicProfile, useUserPosts, useConnect, useConnectionStatus } from 
 import { formatRelativeTime, getTierInfo } from "@/lib/utils";
 import { useState } from "react";
 
-export default function ProfileClient() {
+export default function ProfileClient({ profileId: profileIdProp }: { profileId?: string } = {}) {
   const params = useParams();
   const router = useRouter();
-  const profileId = params.profileId as string;
+  const profileId = profileIdProp || (params?.profileId as string) || "";
   const { data: profile } = usePublicProfile(profileId);
   const { data: postsData } = useUserPosts(profileId);
   const { data: connStatus } = useConnectionStatus(profileId);

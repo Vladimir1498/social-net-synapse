@@ -1,27 +1,32 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
+
+const ChatClient = dynamic(() => import("./chat/[userId]/ChatClient"), { ssr: false });
+const ProfileClient = dynamic(() => import("./profile/[profileId]/ProfileClient"), { ssr: false });
 
 export default function NotFound() {
-  const router = useRouter();
   const pathname = usePathname();
 
-  useEffect(() => {
-    const prefixes = ["/chat/", "/profile/"];
-    const isDynamic = prefixes.some((p) => pathname.startsWith(p) && pathname.length > p.length);
+  const chatMatch = pathname.match(/^\/chat\/(.+)$/);
+  if (chatMatch) {
+    return <ChatClient userId={chatMatch[1]} />;
+  }
 
-    if (isDynamic) {
-      sessionStorage.setItem("redirect_path", pathname);
-      router.replace("/");
-    }
-  }, [pathname, router]);
+  const profileMatch = pathname.match(/^\/profile\/(.+)$/);
+  if (profileMatch) {
+    return <ProfileClient profileId={profileMatch[1]} />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-bionic-text mb-2">404</h1>
-        <p className="text-bionic-text-dim mb-4">Redirecting...</p>
+        <p className="text-bionic-text-dim mb-4">Page not found</p>
+        <a href="/" className="text-bionic-accent hover:underline">
+          Go to Home
+        </a>
       </div>
     </div>
   );

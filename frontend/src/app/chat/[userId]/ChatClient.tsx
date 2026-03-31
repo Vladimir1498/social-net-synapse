@@ -5,10 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Send } from "lucide-react";
 import { useMessages, useSendMessage, useUser } from "@/lib/hooks";
 
-export default function ChatClient() {
+export default function ChatClient({ userId: userIdProp }: { userId?: string } = {}) {
   const params = useParams();
   const router = useRouter();
-  const userId = params.userId as string;
+  const userId = userIdProp || (params?.userId as string) || "";
   const { data: user } = useUser();
   const { data: messages } = useMessages(userId);
   const sendMessage = useSendMessage();

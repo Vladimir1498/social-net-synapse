@@ -181,9 +181,10 @@ export function useConnect() {
       const { data } = await api.post<ConnectResponse>("/matching/connect", request);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["userStats"] });
       queryClient.invalidateQueries({ queryKey: ["connections"] });
+      queryClient.invalidateQueries({ queryKey: ["connectionStatus", variables.to_user_id] });
     },
   });
 }

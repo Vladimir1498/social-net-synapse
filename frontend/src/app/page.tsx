@@ -46,15 +46,6 @@ export default function HubPage() {
   const excludeIds = impactedPostId ? [impactedPostId] : [];
   const { data: suggestedPosts } = useSuggestedPosts(5, excludeIds);
 
-  // Redirect from 404 (GitHub Pages dynamic routes)
-  useEffect(() => {
-    const redirectPath = sessionStorage.getItem("redirect_path");
-    if (redirectPath) {
-      sessionStorage.removeItem("redirect_path");
-      router.replace(redirectPath);
-    }
-  }, [router]);
-
   // Check authentication and redirect to login if not authenticated
   useEffect(() => {
     const token = localStorage.getItem("token");
