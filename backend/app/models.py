@@ -47,6 +47,9 @@ class User(SQLModel, table=True):
     is_focusing: bool = Field(default=False)
     current_focus_goal: Optional[str] = Field(default=None, sa_column=Column(Text))
     
+    # Online status
+    last_seen: Optional[datetime] = Field(default=None, index=True)
+    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(
@@ -216,6 +219,9 @@ class Message(SQLModel, table=True):
     )
     from_user_id: str = Field(foreign_key="users.id", index=True)
     to_user_id: str = Field(foreign_key="users.id", index=True)
-    content: str = Field(sa_column=Column(Text))
+    content: str = Field(default="", sa_column=Column(Text))
+    message_type: str = Field(default="text", max_length=20)  # text | image | file
+    file_url: Optional[str] = Field(default=None, max_length=500)
     is_read: bool = Field(default=False)
+    read_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)

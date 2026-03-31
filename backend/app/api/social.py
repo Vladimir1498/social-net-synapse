@@ -1,7 +1,10 @@
 """Social API routes for comments, messages, search, leaderboard, saved posts."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select, func, or_
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from pydantic import BaseModel
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -10,6 +13,39 @@ from app.models import Comment, Message, Post, SavedPost, User, Interaction
 from app.schemas import PostResponse
 
 router = APIRouter(prefix="/social", tags=["Social"])
+
+
+# ============ Online Status ============
+@router.post("/heartbeat")
+async def heartbeat(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Update user's last_seen to mark them as online."""
+    current_user.last_seen = datetime.utcnow()
+    session.add(current_user)
+    await session.flush()
+    return {"status": "ok", "last_seen": current_user.last_seen.isoformat()}
+
+
+@router.get("/online-status/{user_id}")
+async def get_online_status(
+    user_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Check if a user is online (last_seen within 2 minutes)."""
+    from datetime import timedelta
+    user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    now = datetime.utcnow()
+    is_online = user.last_seen is not None and (now - user.last_seen) < timedelta(minutes=2)
+    return {
+        "user_id": user_id,
+        "is_online": is_online,
+        "last_seen": user.last_seen.isoformat() if user.last_seen else None,
+    }
 
 
 # ============ Comments ============
@@ -51,19 +87,45 @@ async def get_comments(
 
 
 # ============ Messages ============
+class SendMessageRequest(BaseModel):
+    """Request to send a message."""
+    content: str = ""
+    message_type: str = "text"  # text | image | file
+    file_url: str | None = None
+
+
 @router.post("/messages/{user_id}")
 async def send_message(
     user_id: str,
-    content: str = Query(..., min_length=1, max_length=2000),
+    request: SendMessageRequest,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot message yourself")
-    msg = Message(from_user_id=current_user.id, to_user_id=user_id, content=content)
+    if not request.content and not request.file_url:
+        raise HTTPException(status_code=400, detail="Message must have content or file")
+    
+    msg = Message(
+        from_user_id=current_user.id,
+        to_user_id=user_id,
+        content=request.content,
+        message_type=request.message_type,
+        file_url=request.file_url,
+    )
     session.add(msg)
     await session.flush()
-    return {"id": msg.id, "from_user_id": current_user.id, "to_user_id": user_id, "content": content, "is_read": False, "created_at": msg.created_at.isoformat()}
+    return {
+        "id": msg.id,
+        "from_user_id": current_user.id,
+        "to_user_id": user_id,
+        "content": msg.content,
+        "message_type": msg.message_type,
+        "file_url": msg.file_url,
+        "is_read": False,
+        "read_at": None,
+        "created_at": msg.created_at.isoformat(),
+    }
 
 
 @router.get("/messages/{user_id}")
@@ -91,12 +153,40 @@ async def get_messages(
     for m in messages:
         if m.to_user_id == current_user.id and not m.is_read:
             m.is_read = True
+            m.read_at = datetime.utcnow()
             session.add(m)
     await session.flush()
     return [
-        {"id": m.id, "from_user_id": m.from_user_id, "to_user_id": m.to_user_id, "content": m.content, "is_read": m.is_read, "created_at": m.created_at.isoformat()}
+        {
+            "id": m.id,
+            "from_user_id": m.from_user_id,
+            "to_user_id": m.to_user_id,
+            "content": m.content,
+            "message_type": m.message_type,
+            "file_url": m.file_url,
+            "is_read": m.is_read,
+            "read_at": m.read_at.isoformat() if m.read_at else None,
+            "created_at": m.created_at.isoformat(),
+        }
         for m in messages
     ]
+
+
+@router.get("/messages/unread-count")
+async def get_unread_count(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Get total unread message count."""
+    count = (
+        await session.execute(
+            select(func.count(Message.id)).where(
+                Message.to_user_id == current_user.id,
+                Message.is_read == False,
+            )
+        )
+    ).scalar() or 0
+    return {"unread_count": count}
 
 
 @router.get("/conversations")
@@ -105,8 +195,7 @@ async def get_conversations(
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
     """Get list of users the current user has messaged with, with last message."""
-    from sqlalchemy import case
-    query = text if False else None  # placeholder
+    from datetime import timedelta
 
     # Get distinct user IDs from messages
     sent = select(Message.to_user_id).where(Message.from_user_id == current_user.id)
@@ -115,6 +204,7 @@ async def get_conversations(
     user_ids_result = await session.execute(sent.union(received))
     user_ids = [r[0] for r in user_ids_result.fetchall()]
 
+    now = datetime.utcnow()
     conversations = []
     for uid in user_ids:
         user = (await session.execute(select(User).where(User.id == uid))).scalar_one_or_none()
@@ -141,6 +231,8 @@ async def get_conversations(
             )
         ).scalar() or 0
 
+        is_online = user.last_seen is not None and (now - user.last_seen) < timedelta(minutes=2)
+
         conversations.append({
             "user_id": uid,
             "username": user.username,
@@ -148,6 +240,8 @@ async def get_conversations(
             "last_message": last_msg.content if last_msg else "",
             "last_message_at": last_msg.created_at.isoformat() if last_msg else None,
             "unread_count": unread,
+            "is_online": is_online,
+            "last_seen": user.last_seen.isoformat() if user.last_seen else None,
         })
 
     conversations.sort(key=lambda c: c["last_message_at"] or "", reverse=True)

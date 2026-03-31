@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     impact_score: int = 0
     is_focusing: bool = False
     current_focus_goal: Optional[str] = None
+    last_seen: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -57,6 +58,7 @@ class UserPublic(BaseModel):
     is_focusing: bool = False
     current_focus_goal: Optional[str] = None
     similarity_score: Optional[float] = None
+    last_seen: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

@@ -478,17 +478,30 @@ export function useCreateComment() {
 
 // Messages
 export function useConversations() {
-  return useQuery<{ user_id: string; username: string; avatar_url: string | null; last_message: string; last_message_at: string | null; unread_count: number }[]>({
+  return useQuery<{ user_id: string; username: string; avatar_url: string | null; last_message: string; last_message_at: string | null; unread_count: number; is_online: boolean; last_seen: string | null }[]>({
     queryKey: ["conversations"],
     queryFn: async () => {
       const { data } = await api.get("/social/conversations");
       return data;
     },
+    refetchInterval: 30000,
   });
 }
 
+interface ChatMessage {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  content: string;
+  message_type: string;
+  file_url: string | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
 export function useMessages(userId: string | null) {
-  return useQuery<{ id: string; from_user_id: string; to_user_id: string; content: string; is_read: boolean; created_at: string }[]>({
+  return useQuery<ChatMessage[]>({
     queryKey: ["messages", userId],
     queryFn: async () => {
       const { data } = await api.get(`/social/messages/${userId}`);
@@ -501,14 +514,45 @@ export function useMessages(userId: string | null) {
 
 export function useSendMessage() {
   const queryClient = useQueryClient();
-  return useMutation<void, Error, { userId: string; content: string }>({
-    mutationFn: async ({ userId, content }) => {
-      await api.post(`/social/messages/${userId}`, null, { params: { content } });
+  return useMutation<void, Error, { userId: string; content: string; message_type?: string; file_url?: string }>({
+    mutationFn: async ({ userId, content, message_type, file_url }) => {
+      await api.post(`/social/messages/${userId}`, { content, message_type: message_type || "text", file_url });
     },
     onSuccess: (_, { userId }) => {
       queryClient.invalidateQueries({ queryKey: ["messages", userId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
+  });
+}
+
+export function useOnlineStatus(userId: string | null) {
+  return useQuery<{ user_id: string; is_online: boolean; last_seen: string | null }>({
+    queryKey: ["onlineStatus", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/social/online-status/${userId}`);
+      return data;
+    },
+    enabled: !!userId,
+    refetchInterval: 30000,
+  });
+}
+
+export function useHeartbeat() {
+  return useMutation({
+    mutationFn: async () => {
+      await api.post("/social/heartbeat");
+    },
+  });
+}
+
+export function useUnreadCount() {
+  return useQuery<{ unread_count: number }>({
+    queryKey: ["unreadCount"],
+    queryFn: async () => {
+      const { data } = await api.get("/social/messages/unread-count");
+      return data;
+    },
+    refetchInterval: 15000,
   });
 }
 
