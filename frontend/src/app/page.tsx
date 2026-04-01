@@ -133,32 +133,46 @@ export default function HubPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
+    <div className="page-container mx-auto">
       {/* Level Up Animation */}
       <AnimatePresence>
         {showLevelUp && (
           <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card p-8 text-center max-w-md mx-4">
-              <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: 3, duration: 0.5 }} className="text-6xl mb-4">
+            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass-card p-6 sm:p-8 text-center max-w-md mx-4">
+              <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: 3, duration: 0.5 }} className="text-5xl sm:text-6xl mb-4">
                 ⬆️
               </motion.div>
-              <h2 className="text-3xl font-bold text-bionic-accent mb-2">Level Up!</h2>
-              <p className="text-bionic-text-dim">You've reached a new tier!</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-bionic-accent mb-2">Level Up!</h2>
+              <p className="text-bionic-text-dim">You&apos;ve reached a new tier!</p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Header */}
-      <header className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-bionic-text">
-              Welcome back, <span className="text-bionic-accent">{user?.username || "Explorer"}</span>
+      <header className="section-gap">
+        {/* Top row: greeting + actions */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="heading-1 truncate">
+              <span className="text-bionic-text">Welcome back, </span>
+              <span className="text-bionic-accent">{user?.username || "Explorer"}</span>
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-sm sm:text-base text-bionic-text-dim truncate">Your synaptic journey continues</p>
+              {user?.is_focusing && (
+                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                  Focusing
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right side: tier icon + bell + status badges */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {user?.impact_score !== undefined && (
-              <span className="text-2xl" title={`${getTierInfo(user.impact_score).name} Tier`}>
+              <span className="text-xl sm:text-2xl" title={`${getTierInfo(user.impact_score).name} Tier`}>
                 {getTierInfo(user.impact_score).icon}
               </span>
             )}
@@ -168,34 +182,40 @@ export default function HubPage() {
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">{unreadCount}</span>
               )}
             </button>
+            {/* Focus Streak */}
+            {streak && streak.current_streak > 0 && (
+              <div className="hidden sm:flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/30">
+                <span className="text-base">🔥</span>
+                <span className="text-sm font-medium text-orange-400">
+                  {streak.current_streak} day{streak.current_streak > 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+            {/* Live Focusing */}
+            {liveFocusing && liveFocusing.count > 0 && (
+              <div className="hidden sm:flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 animate-pulse">
+                <span className="text-base">🧘</span>
+                <span className="text-sm font-medium text-indigo-400">{liveFocusing.count} focusing</span>
+              </div>
+            )}
           </div>
-          </div>
+        </div>
 
-          {/* Focus Streak */}
+        {/* Mobile-only: streak + focusing badges */}
+        <div className="flex sm:hidden items-center gap-2 mt-2">
           {streak && streak.current_streak > 0 && (
-            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/30">
-              <span className="text-lg">🔥</span>
-              <span className="text-sm font-medium text-orange-400">
-                {streak.current_streak} day{streak.current_streak > 1 ? "s" : ""}
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-500/20 border border-orange-500/30">
+              <span>🔥</span>
+              <span className="text-xs font-medium text-orange-400">
+                {streak.current_streak}d
               </span>
             </div>
           )}
-
-          {/* Live Focusing */}
           {liveFocusing && liveFocusing.count > 0 && (
-            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 animate-pulse">
-              <span className="text-lg">🧘</span>
-              <span className="text-sm font-medium text-indigo-400">{liveFocusing.count} focusing</span>
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 animate-pulse">
+              <span>🧘</span>
+              <span className="text-xs font-medium text-indigo-400">{liveFocusing.count}</span>
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-bionic-text-dim">Your synaptic journey continues</p>
-          {user?.is_focusing && (
-            <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              Focusing
-            </span>
           )}
         </div>
       </header>
@@ -204,55 +224,55 @@ export default function HubPage() {
       <div className="bento-grid">
         {/* Current Goal Card */}
         <div className="bento-item-large animate-fade-in stagger-1">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-3 sm:mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-bionic-accent" />
-              <h2 className="text-lg font-semibold">Current Goal</h2>
+              <h2 className="heading-2">Current Goal</h2>
             </div>
-            <button onClick={() => setIsEditingGoal(!isEditingGoal)} className="btn-ghost text-sm">
+            <button onClick={() => setIsEditingGoal(!isEditingGoal)} className="btn-ghost text-sm flex-shrink-0">
               {isEditingGoal ? "Cancel" : "Edit"}
             </button>
           </div>
 
           {isEditingGoal ? (
             <div className="space-y-3">
-              <textarea value={goalInput} onChange={(e) => setGoalInput(e.target.value)} placeholder="What are you working towards?" className="w-full h-24 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none" />
+              <textarea value={goalInput} onChange={(e) => setGoalInput(e.target.value)} placeholder="What are you working towards?" className="w-full h-20 sm:h-24 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none" />
               <button onClick={handleSyncGoal} disabled={syncGoal.isPending} className="btn-primary w-full">
                 {syncGoal.isPending ? "Syncing..." : "Sync Goal"}
               </button>
             </div>
           ) : (
-            <p className="text-bionic-text-dim text-lg">{user?.current_goal || "Set your goal to start matching with like-minded people"}</p>
+            <p className="text-bionic-text-dim text-base sm:text-lg leading-relaxed">{user?.current_goal || "Set your goal to start matching with like-minded people"}</p>
           )}
         </div>
 
         {/* Impact Score Card */}
         <div className="bento-item animate-fade-in stagger-2">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <Zap className="w-5 h-5 text-bionic-warning" />
-            <h2 className="text-lg font-semibold">Impact Score</h2>
+            <h2 className="heading-2">Impact Score</h2>
           </div>
-          <div className="text-4xl font-bold text-bionic-text glow-text">{stats?.impact_score || 0}</div>
-          <p className="text-bionic-text-dim text-sm mt-2">Points from constructive feedback</p>
+          <div className="text-3xl sm:text-4xl font-bold text-bionic-text glow-text">{stats?.impact_score || 0}</div>
+          <p className="text-bionic-text-dim text-sm mt-1 sm:mt-2">Points from constructive feedback</p>
         </div>
 
         {/* Stats Card */}
         <div className="bento-item animate-fade-in stagger-3">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <TrendingUp className="w-5 h-5 text-bionic-success" />
-            <h2 className="text-lg font-semibold">Stats</h2>
+            <h2 className="heading-2">Stats</h2>
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-bionic-text-dim">Connections</span>
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-bionic-text-dim text-sm">Connections</span>
               <span className="font-medium">{stats?.connections_count || 0}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-bionic-text-dim">Posts</span>
+            <div className="flex justify-between items-center">
+              <span className="text-bionic-text-dim text-sm">Posts</span>
               <span className="font-medium">{stats?.posts_count || 0}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-bionic-text-dim">Focus Sessions</span>
+            <div className="flex justify-between items-center">
+              <span className="text-bionic-text-dim text-sm">Focus Sessions</span>
               <span className="font-medium">{stats?.focus_sessions_count || 0}</span>
             </div>
           </div>
@@ -260,25 +280,69 @@ export default function HubPage() {
 
         {/* Focus Time Card */}
         <div className="bento-item animate-fade-in stagger-4">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <Clock className="w-5 h-5 text-bionic-accent" />
-            <h2 className="text-lg font-semibold">Focus Time</h2>
+            <h2 className="heading-2">Focus Time</h2>
           </div>
-          <div className="text-3xl font-bold text-bionic-text">
+          <div className="text-2xl sm:text-3xl font-bold text-bionic-text">
             {stats?.total_focus_minutes || 0}
-            <span className="text-lg text-bionic-text-dim ml-1">min</span>
+            <span className="text-base sm:text-lg text-bionic-text-dim ml-1">min</span>
           </div>
-          <p className="text-bionic-text-dim text-sm mt-2">Total productive time</p>
+          <p className="text-bionic-text-dim text-sm mt-1 sm:mt-2">Total productive time</p>
+        </div>
+
+        {/* Quick Actions Card */}
+        <div className="bento-item-full animate-fade-in stagger-5">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            <Users className="w-5 h-5 text-bionic-accent" />
+            <h2 className="heading-2">Quick Actions</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            <button onClick={() => router.push("/focus")} className="glass-button p-3 sm:p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-bionic-accent/20 flex items-center justify-center flex-shrink-0">
+                <Target className="w-4 h-4 sm:w-5 sm:h-5 text-bionic-accent" />
+              </div>
+              <div className="text-left min-w-0">
+                <div className="font-medium text-sm sm:text-base">Start Focus</div>
+                <div className="text-xs sm:text-sm text-bionic-text-dim">Begin a session</div>
+              </div>
+            </button>
+
+            <button onClick={() => router.push("/radar")} className="glass-button p-3 sm:p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-bionic-success/20 flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-bionic-success" />
+              </div>
+              <div className="text-left min-w-0">
+                <div className="font-medium text-sm sm:text-base">Find Matches</div>
+                <div className="text-xs sm:text-sm text-bionic-text-dim">Discover people</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowPostModal(true);
+              }}
+              className="glass-button p-3 sm:p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30"
+            >
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-bionic-warning/20 flex items-center justify-center flex-shrink-0">
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-bionic-warning" />
+              </div>
+              <div className="text-left min-w-0">
+                <div className="font-medium text-sm sm:text-base">Create Post</div>
+                <div className="text-xs sm:text-sm text-bionic-text-dim">Share your thoughts</div>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Daily Discovery Card */}
         <div className="bento-item-full animate-fade-in stagger-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              <h2 className="text-lg font-semibold">Daily Discovery</h2>
+          <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex items-center gap-2 min-w-0">
+              <Sparkles className="w-5 h-5 text-purple-400 flex-shrink-0" />
+              <h2 className="heading-2 truncate">Daily Discovery</h2>
             </div>
-            <button onClick={loadDailyDiscovery} disabled={isLoadingDiscovery} className="text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50">
+            <button onClick={loadDailyDiscovery} disabled={isLoadingDiscovery} className="text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50 flex-shrink-0 ml-2">
               {isLoadingDiscovery ? "Loading..." : "Refresh"}
             </button>
           </div>
@@ -305,56 +369,11 @@ export default function HubPage() {
           )}
         </div>
 
-        {/* Action Cards */}
-        <div className="bento-item-full animate-fade-in stagger-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="w-5 h-5 text-bionic-accent" />
-            <h2 className="text-lg font-semibold">Quick Actions</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button onClick={() => router.push("/focus")} className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
-              <div className="w-10 h-10 rounded-full bg-bionic-accent/20 flex items-center justify-center">
-                <Target className="w-5 h-5 text-bionic-accent" />
-              </div>
-              <div className="text-left">
-                <div className="font-medium">Start Focus</div>
-                <div className="text-sm text-bionic-text-dim">Begin a session</div>
-              </div>
-            </button>
-
-            <button onClick={() => router.push("/radar")} className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30">
-              <div className="w-10 h-10 rounded-full bg-bionic-success/20 flex items-center justify-center">
-                <Users className="w-5 h-5 text-bionic-success" />
-              </div>
-              <div className="text-left">
-                <div className="font-medium">Find Matches</div>
-                <div className="text-sm text-bionic-text-dim">Discover people</div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                console.log("Create Post button clicked");
-                setShowPostModal(true);
-              }}
-              className="glass-button p-4 rounded-xl flex items-center gap-3 hover:border-bionic-accent/30"
-            >
-              <div className="w-10 h-10 rounded-full bg-bionic-warning/20 flex items-center justify-center">
-                <Plus className="w-5 h-5 text-bionic-warning" />
-              </div>
-              <div className="text-left">
-                <div className="font-medium">Create Post</div>
-                <div className="text-sm text-bionic-text-dim">Share your thoughts</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
         {/* AI-Curated Feed Preview */}
         <div className="bento-item-full animate-fade-in stagger-5">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-semibold">Curated For You</h2>
-            <span className="text-xs sm:text-sm text-bionic-text-dim truncate ml-2">Based on: {feed?.curated_by || "your interests"}</span>
+            <h2 className="heading-2">Curated For You</h2>
+            <span className="text-xs sm:text-sm text-bionic-text-dim truncate ml-2 max-w-[140px] sm:max-w-none">Based on: {feed?.curated_by || "your interests"}</span>
           </div>
           <div className="space-y-2 sm:space-y-3">
             {feed?.posts.slice(0, 3).map((post) => (
@@ -366,7 +385,7 @@ export default function HubPage() {
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-xs sm:text-sm font-bold flex-shrink-0">{post.author_username?.[0]?.toUpperCase() || "?"}</div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                    <div className="flex items-center gap-1 sm:gap-2 mb-1 flex-wrap">
                       <span className="text-xs sm:text-sm font-medium truncate">@{post.author_username}</span>
                       {post.author_impact_score != null && (
                         <span className="text-sm sm:text-lg flex-shrink-0" title={`${getTierInfo(post.author_impact_score).name}`}>{getTierInfo(post.author_impact_score).icon}</span>
@@ -376,7 +395,7 @@ export default function HubPage() {
                     <p className="text-sm sm:text-base text-bionic-text line-clamp-2">{post.content}</p>
                     {post.image_url && (
                       <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
-                        <img src={buildImageUrl(post.image_url)} alt="" className="w-full max-h-40 sm:max-h-32 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        <img src={buildImageUrl(post.image_url)} alt="" className="w-full max-h-32 sm:max-h-40 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       </div>
                     )}
                     <div className="flex items-center gap-2 mt-2">
@@ -397,7 +416,7 @@ export default function HubPage() {
             ))}
           </div>
           {(!feed?.posts || feed.posts.length === 0) && (
-              <div className="text-center py-8">
+              <div className="text-center py-6 sm:py-8">
                 <p className="text-bionic-text-dim">No posts yet. Set your goal to get personalized content.</p>
                 <button onClick={() => setIsEditingGoal(true)} className="btn-primary mt-4">
                   Set Your Goal
@@ -409,17 +428,17 @@ export default function HubPage() {
 
       {/* Create Post Modal */}
       {showPostModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bionic-bg/80 backdrop-blur-sm">
-          <div className="glass-card p-6 w-full max-w-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-bionic-bg/80 backdrop-blur-sm">
+          <div className="glass-card w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl rounded-b-none sm:rounded-b-2xl p-5 sm:p-6 animate-fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Create Post</h2>
-              <button onClick={() => setShowPostModal(false)} className="text-bionic-text-dim hover:text-bionic-text">
+              <h2 className="text-lg sm:text-xl font-bold">Create Post</h2>
+              <button onClick={() => setShowPostModal(false)} className="text-bionic-text-dim hover:text-bionic-text p-1">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder="Share your thoughts..." className="w-full h-32 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none mb-4" />
+            <textarea value={postContent} onChange={(e) => setPostContent(e.target.value)} placeholder="Share your thoughts..." className="w-full h-28 sm:h-32 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none mb-4" />
             <div className="mb-4">
-              <div className="flex gap-2 mb-2">
+              <div className="flex flex-col sm:flex-row gap-2 mb-2">
                 <label className="flex-1 cursor-pointer">
                   <input
                     type="file"
@@ -436,7 +455,7 @@ export default function HubPage() {
                       }
                     }}
                   />
-                  <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-dashed border-white/20 hover:border-bionic-accent/50 transition-colors text-sm text-bionic-text-dim">
+                  <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-white/20 hover:border-bionic-accent/50 transition-colors text-sm text-bionic-text-dim">
                     <Upload className="w-4 h-4" />
                     {postImageFile ? postImageFile.name : "Choose from device"}
                   </div>
@@ -450,12 +469,12 @@ export default function HubPage() {
                     setPostImagePreview(e.target.value);
                   }}
                   placeholder="Or paste URL"
-                  className="flex-1 px-4 py-2 rounded-xl glass-input text-bionic-text text-sm"
+                  className="flex-1 px-4 py-2.5 rounded-xl glass-input text-bionic-text text-sm"
                 />
               </div>
               {postImagePreview && (
                 <div className="relative rounded-xl overflow-hidden border border-white/10">
-                  <img src={postImagePreview} alt="Preview" className="w-full max-h-48 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  <img src={postImagePreview} alt="Preview" className="w-full max-h-40 sm:max-h-48 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                   <button onClick={() => { setPostImageFile(null); setPostImagePreview(""); setPostImageUrl(""); }} className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70">
                     <X className="w-4 h-4" />
                   </button>
@@ -465,7 +484,7 @@ export default function HubPage() {
             <div className="flex justify-between items-center mb-4">
               <span className="text-xs text-bionic-text-dim">{postContent.length}/2000 characters</span>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={() => {
                   setShowPostModal(false);
@@ -501,21 +520,21 @@ export default function HubPage() {
       {/* Suggested Posts After Impact */}
       <AnimatePresence>
         {showSuggestedPosts && suggestedPosts?.posts && suggestedPosts.posts.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed inset-0 z-40 bg-bionic-bg/95 backdrop-blur-sm p-4 overflow-y-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed inset-0 z-40 bg-bionic-bg/95 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
             <div className="max-w-md mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold">Keep the momentum! 🔥</h2>
-                <button onClick={() => setShowSuggestedPosts(false)} className="text-bionic-text-dim hover:text-bionic-text">
-                  <X className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-5 sm:mb-6">
+                <h2 className="text-lg sm:text-xl font-bold">Keep the momentum! 🔥</h2>
+                <button onClick={() => setShowSuggestedPosts(false)} className="text-bionic-text-dim hover:text-bionic-text p-1">
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
-              <p className="text-bionic-text-dim mb-4">More posts you might like:</p>
-              <div className="space-y-4">
+              <p className="text-bionic-text-dim mb-4 text-sm sm:text-base">More posts you might like:</p>
+              <div className="space-y-3 sm:space-y-4">
                 {suggestedPosts.posts.map((post) => (
                   <div key={post.id} className="glass-card p-4 card-hover">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">{post.author_username?.[0]?.toUpperCase() || "?"}</div>
-                      <span className="font-medium">{post.author_username}</span>
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{post.author_username?.[0]?.toUpperCase() || "?"}</div>
+                      <span className="font-medium truncate">{post.author_username}</span>
                     </div>
                     <p className="text-bionic-text-dim text-sm mb-2">{post.content}</p>
                     <div className="flex items-center justify-between">
@@ -536,7 +555,7 @@ export default function HubPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => setShowSuggestedPosts(false)} className="w-full mt-6 py-3 rounded-xl bg-zinc-800 text-zinc-400">
+              <button onClick={() => setShowSuggestedPosts(false)} className="w-full mt-5 sm:mt-6 py-3 rounded-xl bg-zinc-800 text-zinc-400">
                 Close
               </button>
             </div>

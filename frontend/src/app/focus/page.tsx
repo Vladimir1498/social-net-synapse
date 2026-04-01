@@ -24,7 +24,6 @@ export default function FocusPage() {
   const startSession = useStartFocusSession();
   const endSession = useEndFocusSession();
 
-  // Check authentication and redirect to login if not authenticated
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token && !userLoading) {
@@ -32,7 +31,6 @@ export default function FocusPage() {
     }
   }, [userLoading, router]);
 
-  // Update elapsed time
   useEffect(() => {
     if (currentSession?.is_active) {
       const interval = setInterval(() => {
@@ -48,7 +46,6 @@ export default function FocusPage() {
 
   const handleStartSession = async () => {
     if (goalInput.trim()) {
-      // Generate AI subtasks if not already done
       if (aiSubtasks.length === 0) {
         setIsLoadingAI(true);
         try {
@@ -65,14 +62,12 @@ export default function FocusPage() {
   };
 
   const handleEndSession = () => {
-    // Calculate impact points: 1 point per minute of focus
     const impactEarned = Math.max(1, Math.floor(elapsedTime));
     setEarnedImpact(impactEarned);
     setShowSummary(true);
 
     endSession.mutate(undefined, {
       onSuccess: () => {
-        // Keep summary visible for a moment
         setTimeout(() => {
           setShowSummary(false);
           setAiSubtasks([]);
@@ -115,31 +110,29 @@ export default function FocusPage() {
   if (currentSession?.is_active || showSummary) {
     return (
       <div className="focus-overlay">
-        <div className="text-center max-w-md px-6 animate-fade-in">
+        <div className="text-center max-w-md px-4 sm:px-6 animate-fade-in">
           {showSummary ? (
-            /* Success Summary */
-            <div className="glass-card p-8">
-              <div className="text-6xl mb-4">🎉</div>
-              <h2 className="text-2xl font-bold text-bionic-text mb-2">Session Complete!</h2>
-              <p className="text-bionic-text-dim mb-6">Great focus work today</p>
+            <div className="glass-card p-6 sm:p-8">
+              <div className="text-5xl sm:text-6xl mb-4">🎉</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-bionic-text mb-2">Session Complete!</h2>
+              <p className="text-bionic-text-dim mb-5 sm:mb-6">Great focus work today</p>
 
-              {/* Did you achieve your goal? */}
               {goalAchieved === null ? (
-                <div className="mb-6">
+                <div className="mb-5 sm:mb-6">
                   <p className="text-sm text-bionic-text-dim mb-3">Did you achieve your goal?</p>
                   <div className="flex gap-3">
-                    <button onClick={() => setGoalAchieved(true)} className="flex-1 py-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30">
+                    <button onClick={() => setGoalAchieved(true)} className="flex-1 py-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 text-sm">
                       ✓ Yes
                     </button>
-                    <button onClick={() => setGoalAchieved(false)} className="flex-1 py-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30">
+                    <button onClick={() => setGoalAchieved(false)} className="flex-1 py-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 text-sm">
                       ✗ Not yet
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="bg-bionic-accent/20 rounded-xl p-4 mb-6">
+                <div className="bg-bionic-accent/20 rounded-xl p-4 mb-5 sm:mb-6">
                   <p className="text-sm text-bionic-text-dim">You earned</p>
-                  <p className="text-4xl font-bold text-bionic-accent">+{earnedImpact} Impact</p>
+                  <p className="text-3xl sm:text-4xl font-bold text-bionic-accent">+{earnedImpact} Impact</p>
                 </div>
               )}
 
@@ -147,27 +140,23 @@ export default function FocusPage() {
             </div>
           ) : (
             <>
-              {/* Close button */}
-              <button onClick={handleEndSession} disabled={endSession.isPending} className="absolute top-6 right-6 p-2 rounded-full glass-button">
+              <button onClick={handleEndSession} disabled={endSession.isPending} className="absolute top-4 sm:top-6 right-4 sm:right-6 p-2 rounded-full glass-button">
                 <X className="w-6 h-6" />
               </button>
 
-              {/* Goal */}
-              <div className="mb-8">
-                <Target className="w-16 h-16 text-bionic-accent mx-auto mb-4 animate-pulse-glow" />
-                <h1 className="text-2xl font-bold text-bionic-text mb-2">Focus Mode Active</h1>
-                <p className="text-bionic-text-dim text-lg">{currentSession?.goal}</p>
+              <div className="mb-6 sm:mb-8">
+                <Target className="w-12 h-12 sm:w-16 sm:h-16 text-bionic-accent mx-auto mb-4 animate-pulse-glow" />
+                <h1 className="text-xl sm:text-2xl font-bold text-bionic-text mb-2">Focus Mode Active</h1>
+                <p className="text-bionic-text-dim text-base sm:text-lg">{currentSession?.goal}</p>
               </div>
 
-              {/* Timer */}
-              <div className="glass-card p-8 mb-8">
-                <div className="text-6xl font-mono font-bold text-bionic-text glow-text">{formatDuration(elapsedTime)}</div>
+              <div className="glass-card p-6 sm:p-8 mb-6 sm:mb-8">
+                <div className="text-5xl sm:text-6xl font-mono font-bold text-bionic-text glow-text">{formatDuration(elapsedTime)}</div>
                 <p className="text-bionic-text-dim mt-2">elapsed</p>
               </div>
 
-              {/* Subtasks Checklist */}
               {aiSubtasks.length > 0 && (
-                <div className="glass-card p-4 mb-8 text-left">
+                <div className="glass-card p-4 mb-6 sm:mb-8 text-left">
                   <h3 className="text-sm font-medium text-purple-300 mb-3">Sub-tasks</h3>
                   <div className="space-y-2">
                     {aiSubtasks.map((subtask, index) => (
@@ -194,8 +183,7 @@ export default function FocusPage() {
                 </div>
               )}
 
-              {/* End Session Button */}
-              <button onClick={handleEndSession} disabled={endSession.isPending} className="btn-primary w-full py-4 text-lg">
+              <button onClick={handleEndSession} disabled={endSession.isPending} className="btn-primary w-full py-4 text-base sm:text-lg">
                 <Square className="w-5 h-5 mr-2 inline" />
                 {endSession.isPending ? "Ending..." : "End Session"}
               </button>
@@ -208,37 +196,33 @@ export default function FocusPage() {
 
   // Start Focus Session View
   return (
-    <div className="min-h-screen p-4 md:p-6">
-      {/* Header */}
-      <header className="mb-6">
+    <div className="page-container mx-auto">
+      <header className="section-gap">
         <div className="flex items-center gap-3">
-          <Target className="w-8 h-8 text-bionic-accent" />
+          <Target className="w-7 h-7 sm:w-8 sm:h-8 text-bionic-accent" />
           <div>
-            <h1 className="text-2xl font-bold text-bionic-text">Focus Mode</h1>
-            <p className="text-bionic-text-dim">Deep work, no distractions</p>
+            <h1 className="heading-1">Focus Mode</h1>
+            <p className="text-sm text-bionic-text-dim">Deep work, no distractions</p>
           </div>
         </div>
       </header>
 
-      {/* Start Session Card */}
       <div className="max-w-lg mx-auto">
-        <div className="glass-card p-6 animate-fade-in">
-          <h2 className="text-xl font-semibold mb-4">Start a Focus Session</h2>
-          <p className="text-bionic-text-dim mb-6">Enter your goal for this session. Focus mode will block distractions and help you concentrate on what matters.</p>
+        <div className="glass-card p-4 sm:p-6 animate-fade-in">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Start a Focus Session</h2>
+          <p className="text-bionic-text-dim mb-5 sm:mb-6 text-sm sm:text-base">Enter your goal for this session. Focus mode will block distractions and help you concentrate on what matters.</p>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">What are you working on?</label>
-              <textarea value={goalInput} onChange={(e) => setGoalInput(e.target.value)} placeholder="e.g., Complete the API integration for the matching service" className="w-full h-32 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none" />
+              <textarea value={goalInput} onChange={(e) => setGoalInput(e.target.value)} placeholder="e.g., Complete the API integration for the matching service" className="w-full h-28 sm:h-32 px-4 py-3 rounded-xl glass-input text-bionic-text resize-none text-sm sm:text-base" />
             </div>
 
-            {/* AI Suggest Button */}
             <button onClick={handleSuggestSubtasks} disabled={!goalInput.trim() || isLoadingAI} className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 disabled:opacity-50">
               <Sparkles className={`w-4 h-4 ${isLoadingAI ? "animate-spin" : ""}`} />
               {isLoadingAI ? "Analyzing..." : "Suggest Sub-tasks"}
             </button>
 
-            {/* AI Subtasks Display */}
             {aiSubtasks.length > 0 && (
               <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-purple-300 mb-2">Suggested Sub-tasks</h4>
@@ -253,30 +237,29 @@ export default function FocusPage() {
               </div>
             )}
 
-            <button onClick={handleStartSession} disabled={!goalInput.trim() || startSession.isPending} className="btn-primary w-full py-4 text-lg">
+            <button onClick={handleStartSession} disabled={!goalInput.trim() || startSession.isPending} className="btn-primary w-full py-4 text-base sm:text-lg">
               <Play className="w-5 h-5 mr-2 inline" />
               {startSession.isPending ? "Starting..." : "Start Focus Session"}
             </button>
           </div>
         </div>
 
-        {/* Tips */}
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 sm:mt-6 space-y-3">
           <h3 className="text-sm font-medium text-bionic-text-dim">Tips for Focus</h3>
           <div className="glass-card p-4">
             <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-bionic-accent mt-0.5" />
+              <Clock className="w-5 h-5 text-bionic-accent mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">Work in blocks</p>
+                <p className="font-medium text-sm sm:text-base">Work in blocks</p>
                 <p className="text-sm text-bionic-text-dim">25-50 minute sessions are most effective</p>
               </div>
             </div>
           </div>
           <div className="glass-card p-4">
             <div className="flex items-start gap-3">
-              <Target className="w-5 h-5 text-bionic-accent mt-0.5" />
+              <Target className="w-5 h-5 text-bionic-accent mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium">One goal at a time</p>
+                <p className="font-medium text-sm sm:text-base">One goal at a time</p>
                 <p className="text-sm text-bionic-text-dim">Focus on a single, specific objective</p>
               </div>
             </div>

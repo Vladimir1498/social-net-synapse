@@ -34,23 +34,23 @@ export default function ProfileClient({ profileId: profileIdProp }: { profileId?
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 pb-24">
-      <header className="mb-6">
-        <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-white/10 mb-3">
+    <div className="page-container mx-auto">
+      <header className="section-gap">
+        <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-white/10">
           <ArrowLeft className="w-5 h-5" />
         </button>
       </header>
 
       <div className="max-w-lg mx-auto">
-        <div className="glass-card p-6 text-center animate-fade-in">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 overflow-hidden">
+        <div className="glass-card p-4 sm:p-6 text-center animate-fade-in">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-2xl sm:text-3xl font-bold mx-auto mb-4 overflow-hidden">
             {profile.avatar_url ? (
               <img src={buildImageUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
             ) : (
               profile.username[0].toUpperCase()
             )}
           </div>
-          <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+          <h1 className="text-lg sm:text-xl font-bold flex items-center justify-center gap-2">
             {profile.username}
             <span className="text-lg" title={getTierInfo(profile.impact_score).name}>{getTierInfo(profile.impact_score).icon}</span>
           </h1>
@@ -60,43 +60,43 @@ export default function ProfileClient({ profileId: profileIdProp }: { profileId?
               Focusing: {profile.current_focus_goal || "..."}
             </span>
           )}
-          <p className="text-bionic-text-dim mt-2">{profile.bio || "No bio yet"}</p>
+          <p className="text-bionic-text-dim mt-2 text-sm sm:text-base">{profile.bio || "No bio yet"}</p>
           {profile.current_goal && (
             <div className="mt-3 p-3 rounded-xl bg-white/5 flex items-center gap-2 text-left">
               <Target className="w-4 h-4 text-bionic-accent flex-shrink-0" />
               <span className="text-sm text-bionic-text">{profile.current_goal}</span>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-4">
             <div className="p-3 rounded-xl bg-white/5">
-              <div className="text-2xl font-bold text-bionic-accent">{profile.impact_score}</div>
-              <div className="text-xs text-bionic-text-dim">Impact Score</div>
+              <div className="text-xl sm:text-2xl font-bold text-bionic-accent">{profile.impact_score}</div>
+              <div className="text-[10px] sm:text-xs text-bionic-text-dim">Impact Score</div>
             </div>
             <div className="p-3 rounded-xl bg-white/5">
-              <div className="text-2xl font-bold">{profile.posts_count || 0}</div>
-              <div className="text-xs text-bionic-text-dim">Posts</div>
+              <div className="text-xl sm:text-2xl font-bold">{profile.posts_count || 0}</div>
+              <div className="text-[10px] sm:text-xs text-bionic-text-dim">Posts</div>
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             {connStatus?.is_connected ? (
-              <button onClick={() => router.push(`/chat/${profileId}`)} className="flex-1 btn-primary flex items-center justify-center gap-2">
+              <button onClick={() => router.push(`/chat/${profileId}`)} className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm sm:text-base">
                 <MessageCircle className="w-4 h-4" /> Message
               </button>
             ) : (
-              <button onClick={handleConnect} disabled={connecting} className="flex-1 btn-primary flex items-center justify-center gap-2">
+              <button onClick={handleConnect} disabled={connecting} className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm sm:text-base">
                 <UserPlus className="w-4 h-4" /> {connecting ? "Connecting..." : "Connect"}
               </button>
             )}
           </div>
         </div>
 
-        <div className="mt-6">
-          <h2 className="text-lg font-semibold mb-4">Posts</h2>
-          <div className="space-y-3">
+        <div className="mt-5 sm:mt-6">
+          <h2 className="heading-2 mb-3 sm:mb-4">Posts</h2>
+          <div className="space-y-2 sm:space-y-3">
             {postsData?.posts?.map((post) => (
-              <div key={post.id} className="glass-card p-4 animate-fade-in">
-                <p className="text-bionic-text">{post.content}</p>
-                {post.image_url && <img src={post.image_url} alt="" className="mt-2 rounded-lg max-h-48 w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+              <div key={post.id} className="glass-card p-3 sm:p-4 animate-fade-in">
+                <p className="text-bionic-text text-sm sm:text-base">{post.content}</p>
+                {post.image_url && <img src={buildImageUrl(post.image_url)} alt="" className="mt-2 rounded-lg max-h-40 sm:max-h-48 w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
                 <div className="flex items-center gap-2 mt-3 text-xs text-bionic-text-dim">
                   <Zap className="w-3 h-3 text-violet-400" />
                   <span>{post.impact_count} impacts</span>

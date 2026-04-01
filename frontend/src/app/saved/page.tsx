@@ -3,30 +3,30 @@
 import { Bookmark, Zap, Trash2 } from "lucide-react";
 import { BottomNavigation } from "@/components/navigation";
 import { useSavedPosts, useUnsavePost } from "@/lib/hooks";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, buildImageUrl } from "@/lib/utils";
 
 export default function SavedPage() {
   const { data: savedPosts } = useSavedPosts();
   const unsave = useUnsavePost();
 
   return (
-    <div className="min-h-screen p-4 md:p-6 pb-24">
-      <header className="mb-6">
+    <div className="page-container mx-auto">
+      <header className="section-gap">
         <div className="flex items-center gap-3">
-          <Bookmark className="w-8 h-8 text-bionic-accent" />
-          <h1 className="text-2xl font-bold text-bionic-text">Saved Posts</h1>
+          <Bookmark className="w-7 h-7 sm:w-8 sm:h-8 text-bionic-accent" />
+          <h1 className="heading-1">Saved Posts</h1>
         </div>
       </header>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {savedPosts?.map((post) => (
-          <div key={post.id} className="glass-card p-4 animate-fade-in">
+          <div key={post.id} className="glass-card p-3 sm:p-4 animate-fade-in">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-medium">@{post.author_username}</span>
               <span className="text-xs text-bionic-text-dim">{formatRelativeTime(post.created_at)}</span>
             </div>
-            <p className="text-bionic-text">{post.content}</p>
-            {post.image_url && <img src={post.image_url} alt="" className="mt-2 rounded-lg max-h-48 w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+            <p className="text-bionic-text text-sm sm:text-base">{post.content}</p>
+            {post.image_url && <img src={buildImageUrl(post.image_url)} alt="" className="mt-2 rounded-lg max-h-40 sm:max-h-48 w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
             <div className="flex items-center justify-between mt-3">
               <div className="flex items-center gap-1 text-xs text-bionic-text-dim">
                 <Zap className="w-3 h-3 text-violet-400" />

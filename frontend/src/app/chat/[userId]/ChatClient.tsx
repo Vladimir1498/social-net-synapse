@@ -113,13 +113,13 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-bionic-bg">
-      <header className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-zinc-900/95 backdrop-blur-sm sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
+    <div className="h-screen flex flex-col bg-bionic-bg">
+      <header className="flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10 bg-zinc-900/95 backdrop-blur-sm sticky top-0 z-10">
+        <button onClick={() => router.back()} className="p-1.5 sm:p-2 -ml-1 sm:-ml-2 rounded-full hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="relative w-10 h-10 flex-shrink-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+        <div className="relative w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm overflow-hidden">
             {profile?.avatar_url ? (
               <img src={buildImageUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -129,7 +129,7 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
           <OnlineDot isOnline={onlineStatus?.is_online ?? false} />
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-semibold truncate">{profile?.username || "Chat"}</h1>
+          <h1 className="text-sm sm:text-base font-semibold truncate">{profile?.username || "Chat"}</h1>
           <p className="text-[11px] text-bionic-text-dim">
             {onlineStatus?.is_online ? (
               <span className="text-green-400">{t("chat.online")}</span>
@@ -141,11 +141,11 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
       </header>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-4 space-y-1">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 py-3 sm:py-4 space-y-1">
           {groupedMessages.length === 0 && !messages?.length && (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center mb-4">
-                <MessageCircle className="w-8 h-8 text-bionic-accent/50" />
+            <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center mb-4">
+                <MessageCircle className="w-7 h-7 sm:w-8 sm:h-8 text-bionic-accent/50" />
               </div>
               <p className="text-bionic-text-dim">{t("chat.noMessages")}</p>
               <p className="text-sm text-bionic-text-dim/60 mt-1">{t("chat.startConversation")}</p>
@@ -154,7 +154,7 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
 
           {groupedMessages.map((group) => (
             <div key={group.date}>
-              <div className="flex items-center justify-center py-3">
+              <div className="flex items-center justify-center py-2 sm:py-3">
                 <span className="px-3 py-1 rounded-full bg-white/5 text-[11px] text-bionic-text-dim font-medium">
                   {formatDateSeparator(group.date, lang)}
                 </span>
@@ -168,11 +168,11 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
                 const isLastInGroup = !nextMsg || nextMsg.from_user_id !== msg.from_user_id;
 
                 return (
-                  <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isLastInGroup ? "mb-3" : "mb-0.5"}`}>
+                  <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"} ${isLastInGroup ? "mb-2 sm:mb-3" : "mb-0.5"}`}>
                     {!isMine && (
-                      <div className="w-7 flex-shrink-0 mr-2">
+                      <div className="w-6 sm:w-7 flex-shrink-0 mr-1.5 sm:mr-2">
                         {showAvatar && (
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-[10px] font-bold mt-auto overflow-hidden">
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-white text-[10px] font-bold mt-auto overflow-hidden">
                             {profile?.avatar_url ? (
                               <img src={buildImageUrl(profile.avatar_url)} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -182,36 +182,32 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
                         )}
                       </div>
                     )}
-                    <div className={`max-w-[75%] sm:max-w-[65%] px-3.5 py-2 ${
+                    <div className={`max-w-[80%] sm:max-w-[65%] px-3 sm:px-3.5 py-1.5 sm:py-2 ${
                       isMine
                         ? `bg-gradient-to-br from-violet-600 to-cyan-600 text-white ${isLastInGroup ? "rounded-2xl rounded-br-sm" : "rounded-2xl rounded-r-sm"}`
                         : `bg-white/[0.08] text-white ${isLastInGroup ? "rounded-2xl rounded-bl-sm" : "rounded-2xl rounded-l-sm"}`
                     }`}>
-                      {/* Image message */}
                       {msg.message_type === "image" && msg.file_url && (
                         <div className="mb-1 -mx-1 -mt-1">
                           <img
                             src={buildImageUrl(msg.file_url)}
                             alt="Image"
-                            className="rounded-xl max-w-full max-h-60 object-cover cursor-pointer"
+                            className="rounded-xl max-w-full max-h-48 sm:max-h-60 object-cover cursor-pointer"
                             onClick={() => window.open(buildImageUrl(msg.file_url), "_blank")}
                           />
                         </div>
                       )}
-                      {/* File message */}
                       {msg.message_type === "file" && msg.file_url && (
                         <a href={buildImageUrl(msg.file_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 mb-1 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">
                           <Paperclip className="w-4 h-4 flex-shrink-0" />
                           <span className="text-sm truncate">{msg.content || "File"}</span>
                         </a>
                       )}
-                      {/* Text content */}
                       {msg.content && msg.message_type !== "file" && (
-                        <p className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
+                        <p className="text-[14px] sm:text-[15px] leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
                       )}
-                      {/* Time + read status */}
                       {isLastInGroup && (
-                        <div className={`flex items-center gap-1 mt-1 ${isMine ? "justify-end" : "justify-end"}`}>
+                        <div className={`flex items-center gap-1 mt-0.5 sm:mt-1 ${isMine ? "justify-end" : "justify-end"}`}>
                           <span className={`text-[10px] ${isMine ? "text-white/50" : "text-zinc-500"}`}>
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </span>
@@ -230,10 +226,10 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
 
       {/* Input */}
       <div className="flex-shrink-0 border-t border-white/10 bg-zinc-900/95 backdrop-blur-sm sticky bottom-0">
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
           <div className="flex gap-2 items-end">
             <input ref={fileInputRef} type="file" accept="image/*,*/*" className="hidden" onChange={handleFileUpload} />
-            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-3 rounded-2xl bg-white/[0.07] border border-white/10 text-white/60 hover:text-white transition-colors flex-shrink-0">
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2.5 sm:p-3 rounded-2xl bg-white/[0.07] border border-white/10 text-white/60 hover:text-white transition-colors flex-shrink-0">
               {uploading ? (
                 <span className="w-5 h-5 border-2 border-white/40 border-t-transparent rounded-full animate-spin block" />
               ) : (
@@ -246,9 +242,9 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
               placeholder={t("chat.message")}
-              className="flex-1 px-4 py-3 rounded-2xl bg-white/[0.07] border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-bionic-accent/40 focus:border-transparent text-[15px] transition-all"
+              className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-white/[0.07] border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-bionic-accent/40 focus:border-transparent text-sm sm:text-[15px] transition-all"
             />
-            <button onClick={handleSend} disabled={!content.trim() || sendMessage.isPending} className="p-3 rounded-2xl bg-gradient-to-br from-violet-600 to-cyan-600 text-white disabled:opacity-30 hover:from-violet-500 hover:to-cyan-500 transition-all flex-shrink-0">
+            <button onClick={handleSend} disabled={!content.trim() || sendMessage.isPending} className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-violet-600 to-cyan-600 text-white disabled:opacity-30 hover:from-violet-500 hover:to-cyan-500 transition-all flex-shrink-0">
               <Send className="w-5 h-5" />
             </button>
           </div>

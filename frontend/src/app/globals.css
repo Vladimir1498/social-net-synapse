@@ -63,22 +63,28 @@ body {
            placeholder:text-bionic-text-dim/50 transition-all duration-200;
   }
 
-  /* Bento Grid */
+  /* Bento Grid - responsive */
   .bento-grid {
-    @apply grid gap-4 md:gap-6;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    @apply grid gap-3 sm:gap-4 lg:gap-5;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .bento-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 
   .bento-item {
-    @apply glass-card p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl;
+    @apply glass-card p-4 sm:p-5 lg:p-6 transition-all duration-300 hover:scale-[1.01] hover:shadow-2xl;
   }
 
   .bento-item-large {
-    @apply bento-item md:col-span-2;
+    @apply bento-item sm:col-span-2;
   }
 
   .bento-item-full {
-    @apply bento-item md:col-span-full;
+    @apply bento-item sm:col-span-2;
   }
 
   /* Accent Glow */
@@ -247,11 +253,35 @@ body {
 
 /* Safe area for mobile devices with bottom navigation */
 .safe-area-bottom {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+}
+
+/* Page container responsive padding */
+.page-container {
+  @apply p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 max-w-5xl;
+}
+
+/* Section spacing */
+.section-gap {
+  @apply mb-4 sm:mb-5 lg:mb-6;
+}
+
+/* Responsive text */
+.heading-1 {
+  @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+}
+
+.heading-2 {
+  @apply text-base sm:text-lg lg:text-xl font-semibold;
+}
+
+/* Responsive card padding */
+.card-padding {
+  @apply p-3 sm:p-4 lg:p-5;
 }
