@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { MessageCircle, ChevronRight } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useConversations } from "@/lib/hooks";
 import { buildImageUrl, formatRelativeTime } from "@/lib/utils";
 
@@ -52,7 +51,6 @@ export default function ChatListPage() {
         )}
       </div>
 
-      <BottomNavigation />
     </div>
   );
 }

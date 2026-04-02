@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Radar, MapPin, UserPlus, MessageSquare, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { BottomNavigation } from "@/components/navigation";
 import { useUser, useMatches, useUpdateLocation, useGiveImpact, useConnect, useConnectionStatus } from "@/lib/hooks";
 import { getSimilarityBadgeClass, getTierInfo } from "@/lib/utils";
 import { MatchResult } from "@/lib/types";
@@ -263,7 +262,6 @@ export default function RadarPage() {
         )}
       </AnimatePresence>
 
-      <BottomNavigation />
     </div>
   );
 }

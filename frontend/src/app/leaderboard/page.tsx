@@ -1,7 +1,6 @@
 "use client";
 
 import { Trophy, Zap, Crown, Medal } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useLeaderboard } from "@/lib/hooks";
 import { getTierInfo, buildImageUrl } from "@/lib/utils";
 
@@ -54,7 +53,6 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      <BottomNavigation />
     </div>
   );
 }

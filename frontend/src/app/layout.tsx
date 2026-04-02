@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/toaster";
+import { BottomNavigation } from "@/components/navigation";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,6 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="absolute top-0 left-1/4 w-96 h-96 bg-bionic-accent/5 rounded-full blur-3xl" />
               <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-bionic-accent/3 rounded-full blur-3xl" />
             </div>
+            {/* Navigation - sidebar on desktop, bottom bar on mobile */}
+            <BottomNavigation />
             {/* Main content area - offset by sidebar on desktop */}
             <main className="relative z-10 pb-[72px] lg:pb-0 lg:ml-64 min-h-screen">
               {children}

@@ -1,7 +1,6 @@
 "use client";
 
 import { Bookmark, Zap, Trash2 } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useSavedPosts, useUnsavePost } from "@/lib/hooks";
 import { formatRelativeTime, buildImageUrl } from "@/lib/utils";
 
@@ -46,7 +45,6 @@ export default function SavedPage() {
         )}
       </div>
 
-      <BottomNavigation />
     </div>
   );
 }

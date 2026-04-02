@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Target, Clock, X, Play, Square, Sparkles } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useUser, useCurrentFocusSession, useStartFocusSession, useEndFocusSession } from "@/lib/hooks";
 import { formatDuration } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -267,7 +266,6 @@ export default function FocusPage() {
         </div>
       </div>
 
-      <BottomNavigation />
     </div>
   );
 }

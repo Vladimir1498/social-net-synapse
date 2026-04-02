@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User, Mail, LogOut, Edit2, Save, Zap, TrendingUp, Camera } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useUser, useUserStats, useSkillMap, useImpactHistory, useUpdateProfile, useUploadAvatar } from "@/lib/hooks";
 import { formatRelativeTime, buildImageUrl } from "@/lib/utils";
 
@@ -276,7 +275,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <BottomNavigation />
     </div>
   );
 }

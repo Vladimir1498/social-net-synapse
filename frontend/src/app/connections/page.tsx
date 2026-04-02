@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users, MessageCircle, Clock, Check, X } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useConnections, usePendingConnections, useConnect } from "@/lib/hooks";
 import { getTierInfo, buildImageUrl } from "@/lib/utils";
 
@@ -117,7 +116,6 @@ export default function ConnectionsPage() {
         </div>
       )}
 
-      <BottomNavigation />
     </div>
   );
 }

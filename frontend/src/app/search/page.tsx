@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search as SearchIcon, User, FileText, Zap } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useSearch } from "@/lib/hooks";
 import { formatRelativeTime, getTierInfo, buildImageUrl } from "@/lib/utils";
 
@@ -89,7 +88,6 @@ export default function SearchPage() {
         </div>
       )}
 
-      <BottomNavigation />
     </div>
   );
 }

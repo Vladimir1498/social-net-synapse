@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, LogOut, Bell, Globe, Info, Shield } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { useUser } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 
@@ -91,7 +90,6 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <BottomNavigation />
     </div>
   );
 }

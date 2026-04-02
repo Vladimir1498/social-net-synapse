@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Target, Zap, Users, Clock, TrendingUp, Plus, X, Sparkles, Bell, Camera, Upload } from "lucide-react";
-import { BottomNavigation } from "@/components/navigation";
 import { PostOverlay } from "@/components/PostOverlay";
 import { useUser, useUserStats, useSyncGoal, useFeed, useCreatePost, usePostImpact, useFocusStreak, useLiveFocusing, useSuggestedPosts, useNotifications, useUploadAvatar, useUploadImage } from "@/lib/hooks";
 import { formatRelativeTime, getSimilarityBadgeClass, getTierInfo, buildImageUrl } from "@/lib/utils";
@@ -563,7 +562,6 @@ export default function HubPage() {
         )}
       </AnimatePresence>
 
-      <BottomNavigation />
     </div>
   );
 }
