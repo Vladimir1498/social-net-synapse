@@ -39,7 +39,7 @@ async def get_online_status(
         raise HTTPException(status_code=404, detail="User not found")
     
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    last_seen = user.last_seen
+    last_seen = user.last_seen.replace(tzinfo=None) if user.last_seen else None
     is_online = last_seen is not None and (now - last_seen) < timedelta(minutes=2)
     return {
         "user_id": user_id,
@@ -228,7 +228,8 @@ async def get_conversations(
             )
         ).scalar() or 0
 
-        is_online = user.last_seen is not None and (now - user.last_seen) < timedelta(minutes=2)
+        last_seen_naive = user.last_seen.replace(tzinfo=None) if user.last_seen else None
+        is_online = last_seen_naive is not None and (now - last_seen_naive) < timedelta(minutes=2)
 
         conversations.append({
             "user_id": uid,
