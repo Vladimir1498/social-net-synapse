@@ -113,9 +113,9 @@ export default function ChatClient({ userId: userIdProp }: { userId?: string } =
   });
 
   return (
-    <div className="h-screen flex flex-col bg-bionic-bg">
+    <div className="flex flex-col bg-bionic-bg min-h-screen lg:h-[calc(100vh)]">
       <header className="flex-shrink-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/10 bg-zinc-900/95 backdrop-blur-sm sticky top-0 z-10">
-        <button onClick={() => router.back()} className="p-1.5 sm:p-2 -ml-1 sm:-ml-2 rounded-full hover:bg-white/10 transition-colors">
+        <button onClick={() => router.back()} className="lg:hidden p-1.5 sm:p-2 -ml-1 sm:-ml-2 rounded-full hover:bg-white/10 transition-colors">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="relative w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0">
